@@ -133,7 +133,7 @@ export function TreasuryHealth({ analytics: _analytics, protocols }: Props) {
                 ))}
               </Pie>
               <Tooltip
-                formatter={(value: number) => [fmt(value), 'Value']}
+                formatter={(value) => [fmt(value as number), 'Value']}
                 contentStyle={tooltipStyle}
               />
             </PieChart>
@@ -163,7 +163,7 @@ export function TreasuryHealth({ analytics: _analytics, protocols }: Props) {
                 width={95}
               />
               <Tooltip
-                formatter={(value: number) => [fmt(value), 'Treasury']}
+                formatter={(value) => [fmt(value as number), 'Treasury']}
                 contentStyle={tooltipStyle}
               />
               <Bar dataKey="value" fill="#1a1a1a" radius={[0, 2, 2, 0]} />
