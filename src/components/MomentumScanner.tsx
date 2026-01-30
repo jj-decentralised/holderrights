@@ -37,13 +37,13 @@ interface Props {
     slug: string;
     category: string;
     tvl: number;
-    mcap: number;
-    revenue30d: number;
+    mcap: number | null;
+    revenue30d: number | null;
     priceChange7d: number | null;
     priceChange30d: number | null;
     tvlChange7d: number | null;
     tvlChange1m: number | null;
-    fees30d: number;
+    fees30d: number | null;
   }[];
 }
 

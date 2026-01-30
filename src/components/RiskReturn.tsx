@@ -27,8 +27,8 @@ interface Props {
     slug: string;
     category: string;
     tvl: number;
-    mcap: number;
-    revenue30d: number;
+    mcap: number | null;
+    revenue30d: number | null;
     priceChange7d: number | null;
     priceChange30d: number | null;
     priceChange1d: number | null;
@@ -53,7 +53,7 @@ function RiskTooltip({ active, payload }: any) {
 
 export function RiskReturn({ protocols }: Props) {
   const qualifying = protocols
-    .filter((p) => p.mcap > 0 && p.revenue30d > 0)
+    .filter((p): p is typeof p & { mcap: number; revenue30d: number } => (p.mcap ?? 0) > 0 && (p.revenue30d ?? 0) > 0)
     .map((p) => {
       const volatility = Math.min(
         Math.abs(p.priceChange1d || 0) +

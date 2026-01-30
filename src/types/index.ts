@@ -222,6 +222,7 @@ export interface EnrichedProtocol {
 export interface CorrelationPoint {
   name: string;
   symbol: string;
+  category: string;
   holderRightsScore: number;
   holderRights: HolderRight[];
   mcap: number | null;

@@ -31,11 +31,11 @@ interface ProtocolTreasury {
   slug: string;
   category: string;
   tvl: number;
-  treasuryTotal: number;
-  treasuryStablecoins: number;
-  treasuryMajors: number;
-  treasuryOwnTokens: number;
-  treasuryOthers: number;
+  treasuryTotal: number | null;
+  treasuryStablecoins: number | null;
+  treasuryMajors: number | null;
+  treasuryOwnTokens: number | null;
+  treasuryOthers: number | null;
 }
 
 interface Props {
@@ -44,15 +44,15 @@ interface Props {
 }
 
 export function TreasuryHealth({ analytics: _analytics, protocols }: Props) {
-  const withTreasury = protocols.filter((p) => p.treasuryTotal > 0);
+  const withTreasury = protocols.filter((p) => (p.treasuryTotal ?? 0) > 0);
 
   if (withTreasury.length === 0) return null;
 
-  const totalTreasury = withTreasury.reduce((s, p) => s + p.treasuryTotal, 0);
-  const totalStablecoins = withTreasury.reduce((s, p) => s + p.treasuryStablecoins, 0);
-  const totalMajors = withTreasury.reduce((s, p) => s + p.treasuryMajors, 0);
-  const totalOwnTokens = withTreasury.reduce((s, p) => s + p.treasuryOwnTokens, 0);
-  const totalOthers = withTreasury.reduce((s, p) => s + p.treasuryOthers, 0);
+  const totalTreasury = withTreasury.reduce((s, p) => s + (p.treasuryTotal ?? 0), 0);
+  const totalStablecoins = withTreasury.reduce((s, p) => s + (p.treasuryStablecoins ?? 0), 0);
+  const totalMajors = withTreasury.reduce((s, p) => s + (p.treasuryMajors ?? 0), 0);
+  const totalOwnTokens = withTreasury.reduce((s, p) => s + (p.treasuryOwnTokens ?? 0), 0);
+  const totalOthers = withTreasury.reduce((s, p) => s + (p.treasuryOthers ?? 0), 0);
 
   const pieData = [
     { name: 'Stablecoins', value: totalStablecoins, fill: COMPOSITION_COLORS[0] },
@@ -62,12 +62,12 @@ export function TreasuryHealth({ analytics: _analytics, protocols }: Props) {
   ].filter((d) => d.value > 0);
 
   const top10 = [...withTreasury]
-    .sort((a, b) => b.treasuryTotal - a.treasuryTotal)
+    .sort((a, b) => (b.treasuryTotal ?? 0) - (a.treasuryTotal ?? 0))
     .slice(0, 10)
-    .map((p) => ({ name: p.name, value: p.treasuryTotal }));
+    .map((p) => ({ name: p.name, value: p.treasuryTotal ?? 0 }));
 
   const top15 = [...withTreasury]
-    .sort((a, b) => b.treasuryTotal - a.treasuryTotal)
+    .sort((a, b) => (b.treasuryTotal ?? 0) - (a.treasuryTotal ?? 0))
     .slice(0, 15);
 
   return (
@@ -124,7 +124,7 @@ export function TreasuryHealth({ analytics: _analytics, protocols }: Props) {
                 innerRadius={50}
                 paddingAngle={2}
                 label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(1)}%`
+                  `${name} ${((percent ?? 0) * 100).toFixed(1)}%`
                 }
                 labelLine={{ stroke: '#999' }}
               >
@@ -194,12 +194,12 @@ export function TreasuryHealth({ analytics: _analytics, protocols }: Props) {
                 <td className="cat-name-cell">{p.name}</td>
                 <td><span className="category-badge">{p.category}</span></td>
                 <td className="num-cell">{fmt(p.tvl)}</td>
-                <td className="num-cell">{fmt(p.treasuryTotal)}</td>
-                <td className="num-cell">{fmt(p.treasuryStablecoins)}</td>
-                <td className="num-cell">{fmt(p.treasuryOwnTokens)}</td>
-                <td className="num-cell">{pct(p.treasuryStablecoins, p.treasuryTotal)}</td>
+                <td className="num-cell">{fmt(p.treasuryTotal ?? 0)}</td>
+                <td className="num-cell">{fmt(p.treasuryStablecoins ?? 0)}</td>
+                <td className="num-cell">{fmt(p.treasuryOwnTokens ?? 0)}</td>
+                <td className="num-cell">{pct(p.treasuryStablecoins ?? 0, p.treasuryTotal ?? 0)}</td>
                 <td className="num-cell">
-                  {p.tvl > 0 ? `${((p.treasuryTotal / p.tvl) * 100).toFixed(1)}%` : '—'}
+                  {p.tvl > 0 ? `${(((p.treasuryTotal ?? 0) / p.tvl) * 100).toFixed(1)}%` : '—'}
                 </td>
               </tr>
             ))}

@@ -184,6 +184,7 @@ export function useDefiData(): DashboardData {
           .map((p) => ({
             name: p.name,
             symbol: p.symbol,
+            category: p.category,
             holderRightsScore: p.holderRightsScore,
             holderRights: p.holderRights,
             mcap: p.mcap,

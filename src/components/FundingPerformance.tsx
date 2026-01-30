@@ -27,10 +27,10 @@ interface Props {
     slug: string;
     category: string;
     tvl: number;
-    mcap: number;
-    totalRaised: number;
-    latestRound: string;
-    latestRoundDate: string;
+    mcap: number | null;
+    totalRaised: number | null;
+    latestRound: string | null;
+    latestRoundDate: string | null;
   }[];
 }
 
@@ -52,16 +52,16 @@ function FundingTooltip({ active, payload }: any) {
 
 export function FundingPerformance({ protocols }: Props) {
   const qualifying = protocols
-    .filter((p) => p.totalRaised > 0 && p.tvl > 0)
+    .filter((p): p is typeof p & { totalRaised: number } => (p.totalRaised ?? 0) > 0 && p.tvl > 0)
     .map((p) => ({
       name: p.name,
       slug: p.slug,
       category: p.category,
       tvl: p.tvl,
-      mcap: p.mcap,
+      mcap: p.mcap ?? 0,
       totalRaised: p.totalRaised,
-      latestRound: p.latestRound,
-      latestRoundDate: p.latestRoundDate,
+      latestRound: p.latestRound ?? '',
+      latestRoundDate: p.latestRoundDate ?? '',
       tvlRaisedRatio: p.tvl / p.totalRaised,
     }));
 
