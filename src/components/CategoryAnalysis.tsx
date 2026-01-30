@@ -64,7 +64,7 @@ export function CategoryAnalysis({ revenueByCategory, avgScoreByCategory }: Cate
                 stroke="#333"
               />
               <Tooltip
-                formatter={(value: number | string) => [fmt(Number(value)), 'Revenue (30d)']}
+                formatter={(value) => [fmt(Number(value)), 'Revenue (30d)']}
                 contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
               />
               <Bar dataKey="revenue" fill="#fff" radius={[2, 2, 0, 0]}>
@@ -94,7 +94,7 @@ export function CategoryAnalysis({ revenueByCategory, avgScoreByCategory }: Cate
                 stroke="#333"
               />
               <Tooltip
-                formatter={(value: number | string) => [Number(value).toFixed(1), 'Avg Rights Score']}
+                formatter={(value) => [Number(value).toFixed(1), 'Avg Rights Score']}
                 contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
               />
               <Bar dataKey="score" fill="#fff" radius={[2, 2, 0, 0]}>

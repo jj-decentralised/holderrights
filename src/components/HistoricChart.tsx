@@ -150,7 +150,7 @@ export function RevenueChart({ title, data }: RevenueChartProps) {
             stroke="#333"
           />
           <Tooltip
-            formatter={(value: number | string) => [`$${Number(value).toLocaleString()}`, 'Revenue']}
+            formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Revenue']}
             labelFormatter={(ts) => formatDate(ts as number)}
             contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
           />
