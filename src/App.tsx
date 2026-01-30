@@ -9,6 +9,14 @@ import { RightsBreakdown } from './components/RightsBreakdown';
 import { AggregateCharts } from './components/AggregateCharts';
 import { ProtocolDetail } from './components/ProtocolDetail';
 import { Methodology } from './components/Methodology';
+import { MarketStructure } from './components/MarketStructure';
+import { RevenueEfficiency } from './components/RevenueEfficiency';
+import { CapitalEfficiency } from './components/CapitalEfficiency';
+import { HackAnalysis } from './components/HackAnalysis';
+import { FundingLandscape } from './components/FundingLandscape';
+import { ChainDominance } from './components/ChainDominance';
+import { YieldLandscape } from './components/YieldLandscape';
+import { EmissionsAnalysis } from './components/EmissionsAnalysis';
 import './App.css';
 
 function App() {
@@ -23,12 +31,15 @@ function App() {
     rightTypeStats,
     historicalTvl,
     aggregateRevenueChart,
+    aggregateFeesChart,
+    aggregateDexVolumeChart,
     loading,
     error,
     selectedProtocol,
     selectProtocol,
     revenueHistory,
     hasProData,
+    analytics,
   } = useDefiData();
 
   if (loading) {
@@ -70,8 +81,17 @@ function App() {
         <AggregateCharts
           historicalTvl={historicalTvl}
           aggregateRevenue={aggregateRevenueChart}
+          aggregateFees={aggregateFeesChart}
+          aggregateDexVolume={aggregateDexVolumeChart}
         />
       </section>
+
+      {/* Market Structure & Concentration */}
+      {analytics && (
+        <section className="section">
+          <MarketStructure analytics={analytics} />
+        </section>
+      )}
 
       {/* Scatter Plots Section */}
       <section className="section">
@@ -116,6 +136,27 @@ function App() {
         </div>
       </section>
 
+      {/* Revenue Efficiency Rankings */}
+      {analytics && (
+        <section className="section">
+          <RevenueEfficiency analytics={analytics} />
+        </section>
+      )}
+
+      {/* Capital Efficiency */}
+      {analytics && (
+        <section className="section">
+          <CapitalEfficiency analytics={analytics} />
+        </section>
+      )}
+
+      {/* Chain Dominance */}
+      {analytics && (
+        <section className="section">
+          <ChainDominance analytics={analytics} />
+        </section>
+      )}
+
       {/* Holder Rights Distribution */}
       <section className="section">
         <RightsBreakdown
@@ -137,23 +178,53 @@ function App() {
         <CategoryDeepDive categoryStats={categoryStats} />
       </section>
 
+      {/* Security & Hack Analysis */}
+      {analytics && (
+        <section className="section">
+          <HackAnalysis analytics={analytics} />
+        </section>
+      )}
+
+      {/* Funding Landscape */}
+      {analytics && (
+        <section className="section">
+          <FundingLandscape analytics={analytics} />
+        </section>
+      )}
+
+      {/* Yield Landscape */}
+      {analytics && (
+        <section className="section">
+          <YieldLandscape analytics={analytics} />
+        </section>
+      )}
+
+      {/* Token Emissions */}
+      {analytics && (
+        <section className="section">
+          <EmissionsAnalysis analytics={analytics} />
+        </section>
+      )}
+
       {/* Featured Price Charts */}
-      <section className="section">
-        <h2 className="section-title">Price History — Top DeFi Tokens</h2>
-        <p className="section-desc">
-          Historic price performance for the largest DeFi tokens by market cap. Click any protocol in the table below
-          to see its individual charts.
-        </p>
-        <div className="chart-grid">
-          {featured.map((p) => (
-            <HistoricChart
-              key={p.slug}
-              title={`${p.name} (${p.symbol})`}
-              data={p.priceHistory}
-            />
-          ))}
-        </div>
-      </section>
+      {featured.length > 0 && (
+        <section className="section">
+          <h2 className="section-title">Price History — Top DeFi Tokens</h2>
+          <p className="section-desc">
+            Historic price performance for the largest DeFi tokens by market cap. Click any protocol in the table below
+            to see its individual charts.
+          </p>
+          <div className="chart-grid">
+            {featured.map((p) => (
+              <HistoricChart
+                key={p.slug}
+                title={`${p.name} (${p.symbol})`}
+                data={p.priceHistory}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Protocol Table */}
       <section className="section">
