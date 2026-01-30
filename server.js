@@ -935,8 +935,10 @@ app.get('/api/chain-history', async (_req, res) => {
         const raw = await fetchJson(`${BASE}/charts/${chain}`);
         if (Array.isArray(raw)) {
           const sixYearsAgo = (now / 1000) - (6 * 365 * 86400);
+          // Keep sorted daily data
           const filtered = raw
             .filter(d => d.date >= sixYearsAgo)
+            .sort((a, b) => a.date - b.date)
             .map(d => ({ date: d.date, tvl: d.totalLiquidityUSD ?? d.tvl ?? 0 }));
           rawByChain[chain] = filtered;
           chainHistoryCache[chain] = { ts: now, data: filtered };
@@ -949,34 +951,59 @@ app.get('/api/chain-history', async (_req, res) => {
 
     await Promise.all(fetches);
 
-    // Build common weekly date grid aligned to Monday epochs
-    // Collect all dates, snap to nearest week (floor to Monday 00:00 UTC)
+    // Build a fixed weekly grid from 6 years ago to today
     const WEEK = 7 * 86400;
-    const allDatesSet = new Set();
-    for (const chain of chains) {
-      for (const pt of (rawByChain[chain] || [])) {
-        const weekDate = Math.floor(pt.date / WEEK) * WEEK;
-        allDatesSet.add(weekDate);
-      }
+    const sixYearsAgo = Math.floor((now / 1000) - (6 * 365 * 86400));
+    const gridStart = Math.floor(sixYearsAgo / WEEK) * WEEK;
+    const gridEnd = Math.floor(now / 1000);
+    const weekDates = [];
+    for (let d = gridStart; d <= gridEnd; d += WEEK) {
+      weekDates.push(d);
     }
-    const weekDates = Array.from(allDatesSet).sort((a, b) => a - b);
 
-    // For each chain, build a lookup (snap daily → weekly bucket, keep latest value per week)
-    const aligned = {};
-    for (const chain of chains) {
-      const weekMap = new Map();
-      for (const pt of (rawByChain[chain] || [])) {
-        const weekDate = Math.floor(pt.date / WEEK) * WEEK;
-        weekMap.set(weekDate, pt.tvl); // last write wins (latest in week)
+    // Carry-forward: for each grid date, use last known TVL at or before that date
+    function carryForward(dailyData, gridDates) {
+      const result = new Float64Array(gridDates.length);
+      if (!dailyData || dailyData.length === 0) return result;
+      let di = 0;
+      for (let gi = 0; gi < gridDates.length; gi++) {
+        const gd = gridDates[gi];
+        // Advance to last daily entry at or before this grid date
+        while (di < dailyData.length - 1 && dailyData[di + 1].date <= gd) {
+          di++;
+        }
+        if (dailyData[di].date <= gd) {
+          result[gi] = dailyData[di].tvl;
+        }
+        // else remains 0 (chain didn't exist yet)
       }
-      aligned[chain] = weekDates.map(d => ({
-        date: d,
-        tvl: weekMap.get(d) || 0,
-      }));
+      return result;
+    }
+
+    // Interpolate each chain onto the weekly grid
+    const chainGridTvl = {};
+    for (const chain of chains) {
+      chainGridTvl[chain] = carryForward(rawByChain[chain], weekDates);
+    }
+
+    // Compute % share at each week and build response
+    const shareData = [];
+    for (let i = 0; i < weekDates.length; i++) {
+      let total = 0;
+      for (const chain of chains) {
+        total += chainGridTvl[chain][i];
+      }
+      if (total <= 0) continue; // skip dates before any chain had data
+
+      const row = { date: weekDates[i] };
+      for (const chain of chains) {
+        row[chain] = parseFloat(((chainGridTvl[chain][i] / total) * 100).toFixed(2));
+      }
+      shareData.push(row);
     }
 
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.json({ chains, dates: weekDates, data: aligned });
+    res.json({ chains, shareData });
   } catch (e) {
     console.error('Chain history error:', e);
     res.status(500).json({ error: 'Failed to fetch chain history' });

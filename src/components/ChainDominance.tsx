@@ -62,8 +62,7 @@ function getColor(chain: string): string {
 
 interface ChainHistoryData {
   chains: string[];
-  dates: number[];
-  data: Record<string, { date: number; tvl: number }[]>;
+  shareData: Record<string, number>[];
 }
 
 interface Props {
@@ -99,57 +98,41 @@ export function ChainDominance({ analytics }: Props) {
       .catch(() => setLoading(false));
   }, [view, chainHistory]);
 
-  // Build % share time series from pre-aligned weekly data
+  // Slice server-computed share data by selected period
   const shareData = useMemo(() => {
-    if (!chainHistory || !chainHistory.dates) return [];
+    if (!chainHistory || !chainHistory.shareData) return [];
 
-    const { chains, dates, data: histData } = chainHistory;
+    const allData = chainHistory.shareData;
+    if (allData.length === 0) return [];
 
-    // Filter dates by period
-    let filteredIndices: number[] = [];
     if (period === 'custom') {
       const fromTs = customFrom ? new Date(customFrom).getTime() / 1000 : 0;
       const toTs = customTo ? new Date(customTo).getTime() / 1000 : Infinity;
-      filteredIndices = dates.map((_, i) => i).filter(i => dates[i] >= fromTs && dates[i] <= toTs);
-    } else {
-      const opt = PERIOD_OPTIONS.find(p => p.key === period);
-      if (opt && opt.days > 0 && dates.length > 0) {
-        const cutoff = dates[dates.length - 1] - opt.days * 86400;
-        filteredIndices = dates.map((_, i) => i).filter(i => dates[i] >= cutoff);
-      } else {
-        filteredIndices = dates.map((_, i) => i);
-      }
+      return allData.filter(row => row.date >= fromTs && row.date <= toTs);
     }
 
-    // Build rows: all chains are aligned to the same date array
-    return filteredIndices.map(idx => {
-      const date = dates[idx];
-      const row: Record<string, number> = { date };
+    const opt = PERIOD_OPTIONS.find(p => p.key === period);
+    if (opt && opt.days > 0) {
+      const lastDate = allData[allData.length - 1].date;
+      const cutoff = lastDate - opt.days * 86400;
+      return allData.filter(row => row.date >= cutoff);
+    }
 
-      // Sum total TVL across all chains at this index
-      let total = 0;
-      for (const chain of chains) {
-        const arr = histData[chain];
-        const tvl = arr && arr[idx] ? arr[idx].tvl : 0;
-        total += tvl;
-      }
-
-      // Compute % share
-      if (total > 0) {
-        let known = 0;
-        for (const chain of chains) {
-          const arr = histData[chain];
-          const tvl = arr && arr[idx] ? arr[idx].tvl : 0;
-          const share = (tvl / total) * 100;
-          row[chain] = share;
-          known += share;
-        }
-        row['Others'] = Math.max(0, 100 - known);
-      }
-
-      return row;
-    });
+    return allData;
   }, [chainHistory, period, customFrom, customTo]);
+
+  // Add "Others" = 100 - sum of known chains
+  const shareDataWithOthers = useMemo(() => {
+    if (!chainHistory) return shareData;
+    const chains = chainHistory.chains;
+    return shareData.map(row => {
+      let known = 0;
+      for (const chain of chains) {
+        known += (row[chain] as number) || 0;
+      }
+      return { ...row, Others: Math.max(0, parseFloat((100 - known).toFixed(2))) };
+    });
+  }, [shareData, chainHistory]);
 
   const shareChains = useMemo(() => {
     if (!chainHistory) return [];
@@ -277,12 +260,12 @@ export function ChainDominance({ analytics }: Props) {
             <div className="chain-share-loading">Loading chain history data...</div>
           )}
 
-          {!loading && shareData.length > 0 && (
+          {!loading && shareDataWithOthers.length > 0 && (
             <>
               <div className="chart-card chart-card-full">
                 <h3 className="chart-card-title">TVL Market Share by Chain (%)</h3>
                 <ResponsiveContainer width="100%" height={440}>
-                  <AreaChart data={shareData} margin={{ top: 8, right: 16, bottom: 20, left: 48 }} stackOffset="none">
+                  <AreaChart data={shareDataWithOthers} margin={{ top: 8, right: 16, bottom: 20, left: 48 }} stackOffset="none">
                     <CartesianGrid strokeDasharray="3 3" stroke="#ececea" vertical={false} />
                     <XAxis
                       dataKey="date"
@@ -290,7 +273,7 @@ export function ChainDominance({ analytics }: Props) {
                       tick={{ fill: '#999', fontSize: 11, fontFamily: 'system-ui' }}
                       stroke="none"
                       tickLine={false}
-                      interval={tickInterval(shareData.length)}
+                      interval={tickInterval(shareDataWithOthers.length)}
                     />
                     <YAxis
                       tickFormatter={v => `${v.toFixed(0)}%`}
@@ -337,7 +320,7 @@ export function ChainDominance({ analytics }: Props) {
             </>
           )}
 
-          {!loading && shareData.length === 0 && chainHistory && (
+          {!loading && shareDataWithOthers.length === 0 && chainHistory && (
             <div className="chain-share-loading">No data for the selected period.</div>
           )}
         </div>
