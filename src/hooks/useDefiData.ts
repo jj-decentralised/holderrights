@@ -6,6 +6,7 @@ import {
   fetchMultiplePriceCharts,
   fetchProtocolRevenue,
   fetchHistoricalTvl,
+  setApiKey,
 } from '../services/defiLlama';
 import type { LlamaProtocol, ProtocolFees } from '../services/defiLlama';
 import { PROTOCOL_CLASSIFICATIONS } from '../data/protocolClassifications';
@@ -69,6 +70,10 @@ function median(arr: number[]): number {
 }
 
 export function useDefiData(): DashboardData {
+  // Initialize Pro API key from environment if available
+  const envKey = import.meta.env.VITE_DEFILLAMA_API_KEY;
+  if (envKey) setApiKey(envKey);
+
   const [protocols, setProtocols] = useState<EnrichedProtocol[]>([]);
   const [correlationPoints, setCorrelationPoints] = useState<CorrelationPoint[]>([]);
   const [totalRevenue24h, setTotalRevenue24h] = useState(0);
