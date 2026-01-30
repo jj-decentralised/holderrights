@@ -6,9 +6,15 @@ import {
   fetchMultiplePriceCharts,
   fetchProtocolRevenue,
   fetchHistoricalTvl,
+  fetchDexOverview,
+  fetchTreasuries,
+  fetchHacks,
+  fetchRaises,
+  fetchYieldPools,
   setApiKey,
+  hasApiKey,
 } from '../services/defiLlama';
-import type { LlamaProtocol, ProtocolFees } from '../services/defiLlama';
+import type { LlamaProtocol, ProtocolFees, DexProtocol, TreasuryProtocol, HackEvent, FundingRound, YieldPool } from '../services/defiLlama';
 import { PROTOCOL_CLASSIFICATIONS } from '../data/protocolClassifications';
 import { HolderRight, HOLDER_RIGHT_DEFINITIONS } from '../types';
 import type { EnrichedProtocol, CorrelationPoint, HolderRight as HolderRightType } from '../types';
@@ -60,6 +66,7 @@ export interface DashboardData {
   selectedProtocol: EnrichedProtocol | null;
   selectProtocol: (slug: string | null) => void;
   revenueHistory: { date: number; value: number }[];
+  hasProData: boolean;
 }
 
 function median(arr: number[]): number {
@@ -67,6 +74,11 @@ function median(arr: number[]): number {
   const sorted = [...arr].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// Normalize name for fuzzy matching across APIs
+function normalizeName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 export function useDefiData(): DashboardData {
@@ -88,6 +100,7 @@ export function useDefiData(): DashboardData {
   const [error, setError] = useState<string | null>(null);
   const [selectedProtocol, setSelectedProtocol] = useState<EnrichedProtocol | null>(null);
   const [revenueHistory, setRevenueHistory] = useState<{ date: number; value: number }[]>([]);
+  const [hasProData, setHasProData] = useState(false);
 
   const selectProtocol = useCallback((slug: string | null) => {
     if (!slug) {
@@ -116,12 +129,13 @@ export function useDefiData(): DashboardData {
       try {
         setLoading(true);
 
-        // Fetch all data in parallel — now includes historical TVL
-        const [allProtocols, revenueData, feesData, tvlHistory] = await Promise.all([
+        // ── Phase 1: Core data (always available) ──
+        const [allProtocols, revenueData, feesData, tvlHistory, dexData] = await Promise.all([
           fetchProtocols(),
           fetchRevenueOverview(),
           fetchFeesOverview(),
           fetchHistoricalTvl().catch(() => [] as { date: number; tvl: number }[]),
+          fetchDexOverview().catch(() => null),
         ]);
 
         setTotalRevenue24h(revenueData.total24h || 0);
@@ -142,31 +156,86 @@ export function useDefiData(): DashboardData {
           setAggregateRevenueChart(revChart);
         }
 
-        // Index revenue and fees data by slug
+        // ── Phase 2: Pro API data (if key available) ──
+        let treasuryData: TreasuryProtocol[] = [];
+        let hackData: HackEvent[] = [];
+        let raisesData: FundingRound[] = [];
+        let yieldData: YieldPool[] = [];
+
+        if (hasApiKey()) {
+          const [tres, hacks, raises, yields] = await Promise.all([
+            fetchTreasuries().catch(() => [] as TreasuryProtocol[]),
+            fetchHacks().catch(() => [] as HackEvent[]),
+            fetchRaises().catch(() => [] as FundingRound[]),
+            fetchYieldPools().then(r => r.data || []).catch(() => [] as YieldPool[]),
+          ]);
+          treasuryData = tres;
+          hackData = hacks;
+          raisesData = raises;
+          yieldData = yields;
+
+          if (treasuryData.length > 0 || hackData.length > 0 || raisesData.length > 0) {
+            setHasProData(true);
+          }
+        }
+
+        // ── Index all data by slug / name ──
+
         const revenueBySlug: Record<string, ProtocolFees> = {};
-        revenueData.protocols.forEach((p) => {
-          revenueBySlug[p.slug] = p;
-        });
+        revenueData.protocols.forEach((p) => { revenueBySlug[p.slug] = p; });
 
         const feesBySlug: Record<string, ProtocolFees> = {};
-        feesData.protocols.forEach((p) => {
-          feesBySlug[p.slug] = p;
-        });
+        feesData.protocols.forEach((p) => { feesBySlug[p.slug] = p; });
 
-        // Index protocol data by slug
         const protocolsBySlug: Record<string, LlamaProtocol> = {};
-        allProtocols.forEach((p) => {
-          protocolsBySlug[p.slug] = p;
+        allProtocols.forEach((p) => { protocolsBySlug[p.slug] = p; });
+
+        // DEX volumes by slug
+        const dexBySlug: Record<string, DexProtocol> = {};
+        if (dexData?.protocols) {
+          dexData.protocols.forEach((p) => { dexBySlug[p.slug] = p; });
+        }
+
+        // Treasury by normalized name (treasury API uses names, not slugs)
+        const treasuryByName: Record<string, TreasuryProtocol> = {};
+        const treasuryBySlug: Record<string, TreasuryProtocol> = {};
+        treasuryData.forEach((t) => {
+          treasuryByName[normalizeName(t.name)] = t;
+          if (t.slug) treasuryBySlug[t.slug] = t;
         });
 
-        // Match classified protocols with live data
+        // Hacks by normalized name (hacks use protocol names)
+        const hacksByName: Record<string, HackEvent[]> = {};
+        hackData.forEach((h) => {
+          const key = normalizeName(h.name);
+          if (!hacksByName[key]) hacksByName[key] = [];
+          hacksByName[key].push(h);
+        });
+
+        // Raises by normalized name
+        const raisesByName: Record<string, FundingRound[]> = {};
+        raisesData.forEach((r) => {
+          const key = normalizeName(r.name);
+          if (!raisesByName[key]) raisesByName[key] = [];
+          raisesByName[key].push(r);
+        });
+
+        // Yields by project slug
+        const yieldsByProject: Record<string, YieldPool[]> = {};
+        yieldData.forEach((y) => {
+          const key = y.project.toLowerCase();
+          if (!yieldsByProject[key]) yieldsByProject[key] = [];
+          yieldsByProject[key].push(y);
+        });
+
+        // ── Fetch price charts ──
         const geckoIds = PROTOCOL_CLASSIFICATIONS
           .map((c) => c.geckoId)
           .filter(Boolean);
 
         const priceCharts = await fetchMultiplePriceCharts(geckoIds);
 
-        // Build enriched protocols
+        // ── Build enriched protocols ──
         const enriched: EnrichedProtocol[] = [];
 
         for (const classification of PROTOCOL_CLASSIFICATIONS) {
@@ -174,10 +243,35 @@ export function useDefiData(): DashboardData {
           const revenue = revenueBySlug[classification.slug];
           const fees = feesBySlug[classification.slug];
           const priceHistory = priceCharts[classification.geckoId] || [];
+          const dex = dexBySlug[classification.slug];
 
           const tvl = proto?.tvl || 0;
           const mcap = proto?.mcap || null;
           const revenue30d = revenue?.total30d || null;
+
+          // Match treasury data
+          const normalName = normalizeName(classification.name);
+          const treasury = treasuryBySlug[classification.slug] || treasuryByName[normalName] || null;
+
+          // Match hack data
+          const hacks = hacksByName[normalName] || [];
+          const totalHacked = hacks.reduce((s, h) => s + (h.amount || 0), 0);
+          const lastHack = hacks.length > 0
+            ? hacks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
+            : null;
+
+          // Match raises data
+          const raises = raisesByName[normalName] || [];
+          const totalRaised = raises.reduce((s, r) => s + (r.amount || 0), 0);
+          const latestRaise = raises.length > 0
+            ? raises.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+            : null;
+
+          // Match yield data
+          const pools = yieldsByProject[classification.slug] || yieldsByProject[normalName] || [];
+          const poolApys = pools.filter(p => p.apy > 0 && p.apy < 10000).map(p => p.apy);
+          const topApy = poolApys.length > 0 ? Math.max(...poolApys) : null;
+          const avgApy = poolApys.length > 0 ? poolApys.reduce((s, v) => s + v, 0) / poolApys.length : null;
 
           enriched.push({
             slug: classification.slug,
@@ -201,6 +295,29 @@ export function useDefiData(): DashboardData {
             revenueHistory: [],
             mcapToRevenue: mcap && revenue30d ? mcap / (revenue30d * 12) : null,
             tvlToRevenue: tvl && revenue30d ? tvl / (revenue30d * 12) : null,
+            // DEX volumes
+            dexVolume24h: dex?.total24h || null,
+            dexVolume30d: dex?.total30d || null,
+            // Treasury
+            treasuryTotal: treasury?.total || null,
+            treasuryStablecoins: treasury?.stablecoins || null,
+            treasuryMajors: treasury?.majors || null,
+            treasuryOwnTokens: treasury?.ownTokens || null,
+            treasuryOthers: treasury?.others || null,
+            // Hacks
+            hackCount: hacks.length,
+            totalHackedAmount: totalHacked,
+            lastHackDate: lastHack,
+            // Raises
+            totalRaised: totalRaised > 0 ? totalRaised : null,
+            latestRound: latestRaise?.round || null,
+            latestRoundDate: latestRaise?.date || null,
+            latestValuation: latestRaise?.valuation || null,
+            leadInvestors: latestRaise?.leadInvestors || [],
+            // Yields
+            topPoolApy: topApy,
+            avgPoolApy: avgApy,
+            yieldPoolCount: pools.length,
           });
         }
 
@@ -263,7 +380,7 @@ export function useDefiData(): DashboardData {
         const catStats: CategoryStats[] = Object.entries(catMap).map(([category, protos]) => {
           const scores = protos.map((p) => p.holderRightsScore);
           const revenues = protos.map((p) => p.revenue30d).filter((r): r is number => r !== null);
-          const fees = protos.map((p) => p.fees30d).filter((f): f is number => f !== null);
+          const feesArr = protos.map((p) => p.fees30d).filter((f): f is number => f !== null);
           const feeToRevRatios = protos
             .filter((p) => p.fees30d && p.revenue30d && p.fees30d > 0)
             .map((p) => p.revenue30d! / p.fees30d!);
@@ -275,7 +392,7 @@ export function useDefiData(): DashboardData {
             category,
             protocolCount: protos.length,
             totalRevenue30d: revenues.reduce((s, r) => s + r, 0),
-            totalFees30d: fees.reduce((s, f) => s + f, 0),
+            totalFees30d: feesArr.reduce((s, f) => s + f, 0),
             totalTvl: protos.reduce((s, p) => s + p.tvl, 0),
             totalMcap: protos.reduce((s, p) => s + (p.mcap || 0), 0),
             avgScore: scores.reduce((s, v) => s + v, 0) / scores.length,
@@ -350,5 +467,6 @@ export function useDefiData(): DashboardData {
     selectedProtocol,
     selectProtocol,
     revenueHistory,
+    hasProData,
   };
 }

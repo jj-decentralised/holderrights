@@ -699,6 +699,294 @@ export const PROTOCOL_CLASSIFICATIONS: ProtocolClassification[] = [
   classify('radworks', 'Radworks', 'RAD', 'Developer Tooling', 'radicle',
     [HolderRight.GOVERNANCE_VOTING, HolderRight.TREASURY_GOVERNANCE],
     'RAD governance over Radworks treasury and grants. Decentralized code collaboration.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional DEXes
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('jupiter-perps', 'Jupiter Perps', 'JLP', 'Derivatives', 'jupiter-perpetuals-liquidity-provider-token',
+    [HolderRight.REVENUE_SHARE],
+    'JLP holders earn trading fees from Jupiter perpetuals. Liquidity pool revenue share model.'),
+
+  classify('lifinity', 'Lifinity', 'LFNTY', 'DEX', 'lifinity',
+    [HolderRight.REVENUE_SHARE, HolderRight.BUYBACK_BURN, HolderRight.GOVERNANCE_VOTING],
+    'LFNTY holders benefit from protocol revenue through buyback. Proactive market maker on Solana.'),
+
+  classify('platypus-finance', 'Platypus', 'PTP', 'DEX', 'platypus-finance',
+    [HolderRight.VETOKEN_MODEL, HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS],
+    'vePTP boosts yields and governance power. Single-sided stablecoin AMM on Avalanche.'),
+
+  classify('woofi', 'WOOFi', 'WOO', 'DEX', 'woo-network',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING, HolderRight.BUYBACK_BURN],
+    'WOO staking for fee discounts and governance. Cross-chain DEX using synthetic liquidity.'),
+
+  classify('kyberswap', 'KyberSwap', 'KNC', 'DEX', 'kyber-network-crystal',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'KNC staking and governance in KyberDAO. Concentrated liquidity DEX aggregator.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional Lending
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('aave-v3', 'Aave V3', 'AAVE', 'Lending', 'aave',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS, HolderRight.TREASURY_GOVERNANCE, HolderRight.BUYBACK_BURN],
+    'AAVE V3 with e-mode, isolation mode, and portal. Same token governance as Aave V2.'),
+
+  classify('moonwell', 'Moonwell', 'WELL', 'Lending', 'moonwell',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS],
+    'WELL governance and staking. Base and Moonbeam lending protocol.'),
+
+  classify('uwu-lend', 'UwU Lend', 'UWU', 'Lending', 'uwu-lend',
+    [HolderRight.REVENUE_SHARE, HolderRight.STAKING_REWARDS],
+    'UWU stakers earn protocol fees. Aave-fork with revenue distribution model.'),
+
+  classify('venus-core-pool', 'Venus Core Pool', 'XVS', 'Lending', 'venus',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS, HolderRight.TREASURY_GOVERNANCE],
+    'XVS holders govern Venus Core Pool. Primary BNB Chain lending market.'),
+
+  classify('spark-lending', 'Spark Lending', 'SPK', 'Lending', 'spark',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.TREASURY_GOVERNANCE],
+    'SPK token for Spark lending governance. Sky ecosystem lending with DAI and sDAI.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional Derivatives
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('jupiter-exchange-solana', 'Jupiter Exchange', 'JUP', 'DEX Aggregator', 'jupiter-exchange-solana',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS],
+    'JUP holders participate in governance and Active Staking Rewards. Solana\'s leading aggregator.'),
+
+  classify('apollox', 'ApolloX', 'APX', 'Derivatives', 'apollox-2',
+    [HolderRight.STAKING_REWARDS, HolderRight.BUYBACK_BURN],
+    'APX staking earns trading fees. Buyback and burn mechanism. Multi-chain DEX.'),
+
+  classify('cap-finance', 'Cap Finance', 'CAP', 'Derivatives', 'cap',
+    [HolderRight.REVENUE_SHARE, HolderRight.STAKING_REWARDS],
+    'CAP stakers earn 100% of trading fees. Zero-slippage perpetuals on Arbitrum.'),
+
+  classify('mycelium', 'Mycelium', 'MYC', 'Derivatives', 'mycelium',
+    [HolderRight.REVENUE_SHARE, HolderRight.STAKING_REWARDS],
+    'MYC stakers earn 30% of protocol fees (GMX fork). Perpetual swaps on Arbitrum.'),
+
+  classify('vela-exchange', 'Vela Exchange', 'VELA', 'Derivatives', 'vela-token',
+    [HolderRight.STAKING_REWARDS, HolderRight.REVENUE_SHARE],
+    'VELA stakers earn protocol trading fees. Arbitrum perpetuals DEX.'),
+
+  classify('y2k-finance', 'Y2K Finance', 'Y2K', 'Derivatives', 'y2k',
+    [HolderRight.VETOKEN_MODEL, HolderRight.GOVERNANCE_VOTING, HolderRight.REVENUE_SHARE],
+    'veY2K holders earn protocol fees and governance power. Depeg risk derivatives.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional CDP / Stablecoins
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('gravita-protocol', 'Gravita', 'GRAI', 'CDP', 'gravita-protocol',
+    [HolderRight.GOVERNANCE_VOTING],
+    'GRAI stablecoin with LST collateral. Governance-minimal Liquity-fork. No revenue share.'),
+
+  classify('mimo-defi', 'Mimo', 'MIMO', 'CDP', 'mimo-parallel-governance-token',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS],
+    'MIMO governance and staking. Multi-collateral stablecoin protocol.'),
+
+  classify('raft', 'Raft', 'RAFT', 'CDP', 'raft',
+    [HolderRight.GOVERNANCE_VOTING],
+    'RAFT governance token. R stablecoin backed by staked ETH. Immutable smart contracts.'),
+
+  classify('mountain-protocol', 'Mountain Protocol', 'USDM', 'Stablecoin', 'mountain-protocol',
+    [HolderRight.REVENUE_SHARE],
+    'USDM is a yield-bearing stablecoin. Holders earn T-bill yield passively via rebasing.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional Bridges
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('socket', 'Socket', 'SOCKET', 'Bridge', 'socket',
+    [HolderRight.GOVERNANCE_VOTING],
+    'SOCKET governance token. Interoperability protocol powering Bungee bridge aggregator.'),
+
+  classify('debridge', 'deBridge', 'DBR', 'Bridge', 'debridge',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS],
+    'DBR governance and staking for validator security. Cross-chain bridge and messaging.'),
+
+  classify('li-fi', 'LI.FI', 'LIFI', 'Bridge', 'li-fi',
+    [HolderRight.GOVERNANCE_VOTING],
+    'LIFI governance token. Multi-bridge aggregator and cross-chain middleware.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional Yield / Strategies
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('morpho-aave', 'Morpho Aave', 'MORPHO', 'Yield', 'morpho',
+    [HolderRight.GOVERNANCE_VOTING],
+    'MORPHO governance. Peer-to-peer lending optimizer on top of Aave.'),
+
+  classify('redacted-hidden-hand', 'Hidden Hand', 'BTRFLY', 'Governance', 'redacted',
+    [HolderRight.REVENUE_SHARE, HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'BTRFLY holders earn revenue from Hidden Hand bribe marketplace. Redacted ecosystem.'),
+
+  classify('jones-dao', 'Jones DAO', 'JONES', 'Yield', 'jones-dao',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'jJONES staking earns protocol fees. Options-based yield strategies on Arbitrum.'),
+
+  classify('rage-trade', 'Rage Trade', 'RAGE', 'Yield', 'rage-trade',
+    [HolderRight.GOVERNANCE_VOTING],
+    'RAGE governance token. Delta-neutral yield vaults and perpetuals on Arbitrum.'),
+
+  classify('equilibria', 'Equilibria', 'EQB', 'Yield', 'equilibria-finance',
+    [HolderRight.VETOKEN_MODEL, HolderRight.GOVERNANCE_VOTING, HolderRight.REVENUE_SHARE],
+    'veEQB holders earn boosted PENDLE rewards and protocol fees. Pendle yield booster.'),
+
+  classify('penpie', 'Penpie', 'PNP', 'Yield', 'penpie',
+    [HolderRight.VETOKEN_MODEL, HolderRight.GOVERNANCE_VOTING, HolderRight.REVENUE_SHARE],
+    'vlPNP holders earn PENDLE rewards and governance power. Pendle-Magpie sub-DAO.'),
+
+  classify('magpie', 'Magpie', 'MGP', 'Yield', 'magpie',
+    [HolderRight.VETOKEN_MODEL, HolderRight.GOVERNANCE_VOTING],
+    'vlMGP holders earn boosted rewards from ve-tokenomics protocols. Multi-ecosystem yield booster.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional Infrastructure / Services
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('safe', 'Safe', 'SAFE', 'Infrastructure', 'safe',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.TREASURY_GOVERNANCE],
+    'SAFE governance over Safe DAO and treasury. Leading multi-sig wallet infrastructure.'),
+
+  classify('aragon', 'Aragon', 'ANT', 'Infrastructure', 'aragon',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.TREASURY_GOVERNANCE],
+    'ANT governance over Aragon DAO. DAO creation and governance framework.'),
+
+  classify('snapshot', 'Snapshot', 'SNAP', 'Infrastructure', 'snapshot-labs',
+    [HolderRight.GOVERNANCE_VOTING],
+    'Snapshot governance token. Off-chain voting infrastructure used by thousands of DAOs.'),
+
+  classify('dune-analytics', 'Dune', 'DUNE', 'Infrastructure', 'dune',
+    [HolderRight.GOVERNANCE_VOTING],
+    'DUNE governance token. Blockchain analytics platform with community dashboards.'),
+
+  classify('render-token', 'Render', 'RNDR', 'Infrastructure', 'render-token',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'RNDR used for GPU rendering payments and staking. Decentralized GPU compute network.'),
+
+  classify('livepeer', 'Livepeer', 'LPT', 'Infrastructure', 'livepeer',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'LPT staked to transcoders earns ETH fees from video transcoding. Decentralized video infrastructure.'),
+
+  classify('filecoin', 'Filecoin', 'FIL', 'Infrastructure', 'filecoin',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'FIL staked by storage providers. Block rewards and storage fees. Decentralized storage network.'),
+
+  classify('ar', 'Arweave', 'AR', 'Infrastructure', 'arweave',
+    [HolderRight.STAKING_REWARDS],
+    'AR used for permanent storage payments. Mining rewards for storage miners.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional L1 / L2
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('fetch-ai', 'Fetch.ai', 'FET', 'Infrastructure', 'fetch-ai',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'FET staking and governance. AI-powered autonomous economic agent platform.'),
+
+  classify('ocean-protocol', 'Ocean Protocol', 'OCEAN', 'Infrastructure', 'ocean-protocol',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'OCEAN staking for data curation and governance. Data marketplace and tokenization.'),
+
+  classify('mantle', 'Mantle', 'MNT', 'L1 DeFi', 'mantle',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING, HolderRight.TREASURY_GOVERNANCE],
+    'MNT staking, governance, and treasury governance. L2 with massive treasury reserves.'),
+
+  classify('metis-token', 'Metis', 'METIS', 'L1 DeFi', 'metis-token',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'METIS staking for decentralized sequencer and governance. L2 rollup.'),
+
+  classify('skale', 'SKALE', 'SKL', 'L1 DeFi', 'skale',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'SKL staking secures SKALE chains. Delegated proof of stake. Zero gas fee L2 network.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // GameFi / Metaverse with DeFi elements
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('treasure-dao', 'Treasure', 'MAGIC', 'Gaming', 'magic',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'MAGIC staking and governance. Gaming and metaverse ecosystem on Arbitrum.'),
+
+  classify('illuvium', 'Illuvium', 'ILV', 'Gaming', 'illuvium',
+    [HolderRight.STAKING_REWARDS, HolderRight.REVENUE_SHARE, HolderRight.GOVERNANCE_VOTING],
+    'sILV stakers earn protocol revenue from game sales. AAA blockchain RPG.'),
+
+  classify('echelon-prime', 'Echelon Prime', 'PRIME', 'Gaming', 'echelon-prime',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'PRIME staking and governance. Gaming ecosystem with Parallel card game.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional Liquid Staking / Restaking
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('stakestone', 'StakeStone', 'STO', 'Liquid Staking', 'stakestone',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS],
+    'STO governance and staking. Omnichain liquid staking protocol with STONE.'),
+
+  classify('origin-ether', 'Origin Ether', 'OGN', 'Liquid Staking', 'origin-protocol',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS, HolderRight.REVENUE_SHARE],
+    'OGN staking earns protocol revenue. OETH liquid staking yield on Ethereum.'),
+
+  classify('frax-ether', 'Frax Ether', 'FXS', 'Liquid Staking', 'frax-share',
+    [HolderRight.VETOKEN_MODEL, HolderRight.GOVERNANCE_VOTING, HolderRight.REVENUE_SHARE, HolderRight.TREASURY_GOVERNANCE],
+    'veFXS holders govern frxETH parameters and earn fees. Frax liquid staking product.'),
+
+  classify('mantle-staked-ether', 'Mantle Staked Ether', 'MNT', 'Liquid Staking', 'mantle',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING, HolderRight.TREASURY_GOVERNANCE],
+    'mETH liquid staking by Mantle treasury. MNT governance over staking parameters.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Additional RWA
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('maker-rwa', 'Maker RWA', 'MKR', 'RWA', 'maker',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.BUYBACK_BURN, HolderRight.TREASURY_GOVERNANCE, HolderRight.REVENUE_SHARE],
+    'MKR governs real-world asset vault parameters. RWA revenue is substantial share of protocol income.'),
+
+  classify('backed-finance', 'Backed Finance', 'BUIDL', 'RWA', 'backed-finance',
+    [HolderRight.REVENUE_SHARE],
+    'Backed issues tokenized securities (bIB01 etc.). Token holders earn underlying asset yield.'),
+
+  classify('parcl', 'Parcl', 'PRCL', 'RWA', 'parcl',
+    [HolderRight.GOVERNANCE_VOTING, HolderRight.STAKING_REWARDS],
+    'PRCL governance and staking. Real estate price index derivatives on Solana.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Prediction Markets
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('polymarket', 'Polymarket', 'POLY', 'Prediction Market', 'polymarket',
+    [HolderRight.GOVERNANCE_VOTING],
+    'Polymarket governance token. Leading prediction market on Polygon. No direct revenue share.'),
+
+  classify('azuro', 'Azuro', 'AZUR', 'Prediction Market', 'azuro-protocol',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'AZUR staking and governance. Decentralized betting infrastructure and liquidity layer.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Privacy / ZK
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('railgun', 'RAILGUN', 'RAIL', 'Privacy', 'railgun',
+    [HolderRight.STAKING_REWARDS, HolderRight.GOVERNANCE_VOTING],
+    'RAIL staking for shielded transactions governance. Privacy-preserving DeFi protocol.'),
+
+  // ═══════════════════════════════════════════════════════════════
+  // Social / Creator Economy
+  // ═══════════════════════════════════════════════════════════════
+
+  classify('friend-tech', 'friend.tech', 'FRIEND', 'Social', 'friend-tech',
+    [HolderRight.REVENUE_SHARE],
+    'FRIEND holders earn protocol fees from social trading. Key-based social platform.'),
+
+  classify('lens-protocol', 'Lens Protocol', 'LENS', 'Social', 'lens-protocol',
+    [HolderRight.GOVERNANCE_VOTING],
+    'LENS governance token. Decentralized social graph protocol on Polygon.'),
 ];
 
 // Create lookup by slug

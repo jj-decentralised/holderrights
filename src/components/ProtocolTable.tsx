@@ -5,9 +5,11 @@ import type { EnrichedProtocol, HolderRight } from '../types';
 interface ProtocolTableProps {
   protocols: EnrichedProtocol[];
   onSelect: (slug: string) => void;
+  hasProData: boolean;
 }
 
-type SortKey = 'name' | 'tvl' | 'mcap' | 'holderRightsScore' | 'revenue30d' | 'mcapToRevenue' | 'fees30d';
+type SortKey = 'name' | 'tvl' | 'mcap' | 'holderRightsScore' | 'revenue30d' | 'mcapToRevenue' | 'fees30d'
+  | 'treasuryTotal' | 'totalRaised' | 'hackCount' | 'dexVolume24h' | 'topPoolApy';
 
 function fmt(n: number | null): string {
   if (n === null || n === undefined) return '—';
@@ -37,7 +39,7 @@ function scoreBar(score: number) {
   );
 }
 
-export function ProtocolTable({ protocols, onSelect }: ProtocolTableProps) {
+export function ProtocolTable({ protocols, onSelect, hasProData }: ProtocolTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('holderRightsScore');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -82,6 +84,7 @@ export function ProtocolTable({ protocols, onSelect }: ProtocolTableProps) {
       <h2 className="section-title">Protocol Holder Rights Comparison</h2>
       <p className="section-desc">
         Each protocol is classified by the rights its token grants holders. Click a protocol to view detailed charts.
+        {hasProData && ' Treasury, funding, and hack data sourced from DeFi Llama Pro API.'}
       </p>
 
       <div className="table-controls">
@@ -109,6 +112,13 @@ export function ProtocolTable({ protocols, onSelect }: ProtocolTableProps) {
               <th onClick={() => handleSort('revenue30d')}>Revenue (30d){sortIndicator('revenue30d')}</th>
               <th onClick={() => handleSort('fees30d')}>Fees (30d){sortIndicator('fees30d')}</th>
               <th onClick={() => handleSort('mcapToRevenue')}>MC/Rev{sortIndicator('mcapToRevenue')}</th>
+              {hasProData && (
+                <>
+                  <th onClick={() => handleSort('treasuryTotal')}>Treasury{sortIndicator('treasuryTotal')}</th>
+                  <th onClick={() => handleSort('totalRaised')}>Raised{sortIndicator('totalRaised')}</th>
+                  <th onClick={() => handleSort('hackCount')}>Hacks{sortIndicator('hackCount')}</th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -131,6 +141,19 @@ export function ProtocolTable({ protocols, onSelect }: ProtocolTableProps) {
                 <td className="num-cell">
                   {p.mcapToRevenue !== null ? `${p.mcapToRevenue.toFixed(1)}x` : '—'}
                 </td>
+                {hasProData && (
+                  <>
+                    <td className="num-cell">{fmt(p.treasuryTotal)}</td>
+                    <td className="num-cell">{fmt(p.totalRaised)}</td>
+                    <td className="num-cell">
+                      {p.hackCount > 0 ? (
+                        <span className="hack-indicator" title={`${p.hackCount} hack(s), ${fmt(p.totalHackedAmount)} lost`}>
+                          {p.hackCount}
+                        </span>
+                      ) : '—'}
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>

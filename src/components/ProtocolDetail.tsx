@@ -18,6 +18,11 @@ function fmt(n: number | null): string {
 
 export function ProtocolDetail({ protocol, revenueHistory, onClose }: ProtocolDetailProps) {
   const p = protocol;
+  const hasTreasury = p.treasuryTotal !== null && p.treasuryTotal > 0;
+  const hasRaises = p.totalRaised !== null && p.totalRaised > 0;
+  const hasHacks = p.hackCount > 0;
+  const hasYields = p.yieldPoolCount > 0;
+  const hasDexVolume = p.dexVolume24h !== null;
 
   return (
     <div className="detail-overlay" onClick={(e) => {
@@ -59,7 +64,153 @@ export function ProtocolDetail({ protocol, revenueHistory, onClose }: ProtocolDe
             <div className="stat-label">MC / Revenue</div>
             <div className="stat-value">{p.mcapToRevenue ? `${p.mcapToRevenue.toFixed(1)}x` : '—'}</div>
           </div>
+          {hasDexVolume && (
+            <div className="detail-stat">
+              <div className="stat-label">DEX Volume (24h)</div>
+              <div className="stat-value">{fmt(p.dexVolume24h)}</div>
+            </div>
+          )}
+          {hasDexVolume && (
+            <div className="detail-stat">
+              <div className="stat-label">DEX Volume (30d)</div>
+              <div className="stat-value">{fmt(p.dexVolume30d)}</div>
+            </div>
+          )}
         </div>
+
+        {/* Treasury Section */}
+        {hasTreasury && (
+          <div className="detail-section">
+            <h3>Treasury Composition</h3>
+            <div className="detail-stats">
+              <div className="detail-stat">
+                <div className="stat-label">Total Treasury</div>
+                <div className="stat-value">{fmt(p.treasuryTotal)}</div>
+              </div>
+              <div className="detail-stat">
+                <div className="stat-label">Stablecoins</div>
+                <div className="stat-value">{fmt(p.treasuryStablecoins)}</div>
+              </div>
+              <div className="detail-stat">
+                <div className="stat-label">Major Assets</div>
+                <div className="stat-value">{fmt(p.treasuryMajors)}</div>
+              </div>
+              <div className="detail-stat">
+                <div className="stat-label">Own Token</div>
+                <div className="stat-value">{fmt(p.treasuryOwnTokens)}</div>
+              </div>
+              <div className="detail-stat">
+                <div className="stat-label">Other Assets</div>
+                <div className="stat-value">{fmt(p.treasuryOthers)}</div>
+              </div>
+            </div>
+            {p.treasuryTotal && p.treasuryStablecoins !== null && (
+              <div className="treasury-bar">
+                {p.treasuryStablecoins > 0 && (
+                  <div className="treasury-segment stables" style={{ width: `${(p.treasuryStablecoins / p.treasuryTotal) * 100}%` }}
+                    title={`Stablecoins: ${fmt(p.treasuryStablecoins)}`} />
+                )}
+                {p.treasuryMajors !== null && p.treasuryMajors > 0 && (
+                  <div className="treasury-segment majors" style={{ width: `${(p.treasuryMajors / p.treasuryTotal) * 100}%` }}
+                    title={`Majors: ${fmt(p.treasuryMajors)}`} />
+                )}
+                {p.treasuryOwnTokens !== null && p.treasuryOwnTokens > 0 && (
+                  <div className="treasury-segment own-token" style={{ width: `${(p.treasuryOwnTokens / p.treasuryTotal) * 100}%` }}
+                    title={`Own Token: ${fmt(p.treasuryOwnTokens)}`} />
+                )}
+                {p.treasuryOthers !== null && p.treasuryOthers > 0 && (
+                  <div className="treasury-segment others" style={{ width: `${(p.treasuryOthers / p.treasuryTotal) * 100}%` }}
+                    title={`Others: ${fmt(p.treasuryOthers)}`} />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Funding Section */}
+        {hasRaises && (
+          <div className="detail-section">
+            <h3>Funding History</h3>
+            <div className="detail-stats">
+              <div className="detail-stat">
+                <div className="stat-label">Total Raised</div>
+                <div className="stat-value">{fmt(p.totalRaised)}</div>
+              </div>
+              {p.latestRound && (
+                <div className="detail-stat">
+                  <div className="stat-label">Latest Round</div>
+                  <div className="stat-value">{p.latestRound}</div>
+                </div>
+              )}
+              {p.latestRoundDate && (
+                <div className="detail-stat">
+                  <div className="stat-label">Round Date</div>
+                  <div className="stat-value">{new Date(p.latestRoundDate).toLocaleDateString()}</div>
+                </div>
+              )}
+              {p.latestValuation && (
+                <div className="detail-stat">
+                  <div className="stat-label">Valuation</div>
+                  <div className="stat-value">{fmt(p.latestValuation)}</div>
+                </div>
+              )}
+            </div>
+            {p.leadInvestors.length > 0 && (
+              <div className="investor-list">
+                <span className="investor-label">Lead Investors: </span>
+                {p.leadInvestors.join(', ')}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Hack History */}
+        {hasHacks && (
+          <div className="detail-section">
+            <h3>Security History</h3>
+            <div className="detail-stats">
+              <div className="detail-stat">
+                <div className="stat-label">Hack Count</div>
+                <div className="stat-value hack-value">{p.hackCount}</div>
+              </div>
+              <div className="detail-stat">
+                <div className="stat-label">Total Lost</div>
+                <div className="stat-value hack-value">{fmt(p.totalHackedAmount)}</div>
+              </div>
+              {p.lastHackDate && (
+                <div className="detail-stat">
+                  <div className="stat-label">Last Hack</div>
+                  <div className="stat-value">{new Date(p.lastHackDate).toLocaleDateString()}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Yield Pools */}
+        {hasYields && (
+          <div className="detail-section">
+            <h3>Yield Opportunities</h3>
+            <div className="detail-stats">
+              <div className="detail-stat">
+                <div className="stat-label">Active Pools</div>
+                <div className="stat-value">{p.yieldPoolCount}</div>
+              </div>
+              {p.topPoolApy !== null && (
+                <div className="detail-stat">
+                  <div className="stat-label">Top Pool APY</div>
+                  <div className="stat-value">{p.topPoolApy.toFixed(1)}%</div>
+                </div>
+              )}
+              {p.avgPoolApy !== null && (
+                <div className="detail-stat">
+                  <div className="stat-label">Avg Pool APY</div>
+                  <div className="stat-value">{p.avgPoolApy.toFixed(1)}%</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="detail-rights">
           <h3>Holder Rights Analysis</h3>

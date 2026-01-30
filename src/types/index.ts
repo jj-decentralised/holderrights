@@ -174,6 +174,29 @@ export interface EnrichedProtocol {
   revenueHistory: [number, number][];
   mcapToRevenue: number | null;
   tvlToRevenue: number | null;
+  // DEX volume data (free API)
+  dexVolume24h: number | null;
+  dexVolume30d: number | null;
+  // Treasury data (pro API)
+  treasuryTotal: number | null;
+  treasuryStablecoins: number | null;
+  treasuryMajors: number | null;
+  treasuryOwnTokens: number | null;
+  treasuryOthers: number | null;
+  // Hack history (pro API)
+  hackCount: number;
+  totalHackedAmount: number;
+  lastHackDate: string | null;
+  // Funding rounds (pro API)
+  totalRaised: number | null;
+  latestRound: string | null;
+  latestRoundDate: string | null;
+  latestValuation: number | null;
+  leadInvestors: string[];
+  // Yield data (pro API)
+  topPoolApy: number | null;
+  avgPoolApy: number | null;
+  yieldPoolCount: number;
 }
 
 export interface CorrelationPoint {

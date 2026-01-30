@@ -411,6 +411,70 @@
   border-radius: 4px;
 }
 
+/* ── Detail Sections (treasury, hacks, funding, yields) ── */
+
+.detail-section {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-section h3 {
+  font-size: 17px;
+  margin-bottom: 12px;
+}
+
+.treasury-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 12px;
+  background: var(--bg-raised);
+}
+
+.treasury-segment {
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.treasury-segment.stables {
+  background: #2a7d3f;
+}
+
+.treasury-segment.majors {
+  background: #1a1a1a;
+}
+
+.treasury-segment.own-token {
+  background: #888;
+}
+
+.treasury-segment.others {
+  background: #ccc;
+}
+
+.investor-list {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.investor-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.hack-value {
+  color: #b33;
+}
+
+.hack-indicator {
+  color: #b33;
+  font-weight: 600;
+}
+
 .detail-rights {
   margin-bottom: 32px;
 }

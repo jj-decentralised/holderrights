@@ -28,6 +28,7 @@ function App() {
     selectedProtocol,
     selectProtocol,
     revenueHistory,
+    hasProData,
   } = useDefiData();
 
   if (loading) {
@@ -156,7 +157,7 @@ function App() {
 
       {/* Protocol Table */}
       <section className="section">
-        <ProtocolTable protocols={protocols} onSelect={selectProtocol} />
+        <ProtocolTable protocols={protocols} onSelect={selectProtocol} hasProData={hasProData} />
       </section>
 
       {/* Methodology */}
