@@ -142,14 +142,14 @@ export function useDefiData(): DashboardData {
         setTotalFees24h(feesData.total24h || 0);
 
         // Store historical TVL (last 365 days for cleaner chart)
-        if (tvlHistory.length > 365) {
+        if (Array.isArray(tvlHistory) && tvlHistory.length > 365) {
           setHistoricalTvl(tvlHistory.slice(-365));
-        } else {
+        } else if (Array.isArray(tvlHistory)) {
           setHistoricalTvl(tvlHistory);
         }
 
         // Store aggregate revenue time-series from overview
-        if (revenueData.totalDataChart?.length) {
+        if (Array.isArray(revenueData?.totalDataChart) && revenueData.totalDataChart.length) {
           const revChart = revenueData.totalDataChart
             .filter((d) => d[1] > 0)
             .map((d) => ({ date: d[0], value: d[1] }));
@@ -167,12 +167,13 @@ export function useDefiData(): DashboardData {
             fetchTreasuries().catch(() => [] as TreasuryProtocol[]),
             fetchHacks().catch(() => [] as HackEvent[]),
             fetchRaises().catch(() => [] as FundingRound[]),
-            fetchYieldPools().then(r => r.data || []).catch(() => [] as YieldPool[]),
+            fetchYieldPools().then(r => r?.data || []).catch(() => [] as YieldPool[]),
           ]);
-          treasuryData = tres;
-          hackData = hacks;
-          raisesData = raises;
-          yieldData = yields;
+          // Guard against non-array responses from pro API
+          treasuryData = Array.isArray(tres) ? tres : [];
+          hackData = Array.isArray(hacks) ? hacks : [];
+          raisesData = Array.isArray(raises) ? raises : [];
+          yieldData = Array.isArray(yields) ? yields : [];
 
           if (treasuryData.length > 0 || hackData.length > 0 || raisesData.length > 0) {
             setHasProData(true);
@@ -182,31 +183,41 @@ export function useDefiData(): DashboardData {
         // ── Index all data by slug / name ──
 
         const revenueBySlug: Record<string, ProtocolFees> = {};
-        revenueData.protocols.forEach((p) => { revenueBySlug[p.slug] = p; });
+        const revProtos = revenueData?.protocols;
+        if (Array.isArray(revProtos)) {
+          revProtos.forEach((p) => { revenueBySlug[p.slug] = p; });
+        }
 
         const feesBySlug: Record<string, ProtocolFees> = {};
-        feesData.protocols.forEach((p) => { feesBySlug[p.slug] = p; });
+        const feeProtos = feesData?.protocols;
+        if (Array.isArray(feeProtos)) {
+          feeProtos.forEach((p) => { feesBySlug[p.slug] = p; });
+        }
 
         const protocolsBySlug: Record<string, LlamaProtocol> = {};
-        allProtocols.forEach((p) => { protocolsBySlug[p.slug] = p; });
+        if (Array.isArray(allProtocols)) {
+          allProtocols.forEach((p) => { protocolsBySlug[p.slug] = p; });
+        }
 
         // DEX volumes by slug
         const dexBySlug: Record<string, DexProtocol> = {};
-        if (dexData?.protocols) {
-          dexData.protocols.forEach((p) => { dexBySlug[p.slug] = p; });
+        const dexProtos = dexData?.protocols;
+        if (Array.isArray(dexProtos)) {
+          dexProtos.forEach((p) => { dexBySlug[p.slug] = p; });
         }
 
         // Treasury by normalized name (treasury API uses names, not slugs)
         const treasuryByName: Record<string, TreasuryProtocol> = {};
         const treasuryBySlug: Record<string, TreasuryProtocol> = {};
         treasuryData.forEach((t) => {
-          treasuryByName[normalizeName(t.name)] = t;
+          if (t.name) treasuryByName[normalizeName(t.name)] = t;
           if (t.slug) treasuryBySlug[t.slug] = t;
         });
 
         // Hacks by normalized name (hacks use protocol names)
         const hacksByName: Record<string, HackEvent[]> = {};
         hackData.forEach((h) => {
+          if (!h.name) return;
           const key = normalizeName(h.name);
           if (!hacksByName[key]) hacksByName[key] = [];
           hacksByName[key].push(h);
@@ -215,6 +226,7 @@ export function useDefiData(): DashboardData {
         // Raises by normalized name
         const raisesByName: Record<string, FundingRound[]> = {};
         raisesData.forEach((r) => {
+          if (!r.name) return;
           const key = normalizeName(r.name);
           if (!raisesByName[key]) raisesByName[key] = [];
           raisesByName[key].push(r);
@@ -223,6 +235,7 @@ export function useDefiData(): DashboardData {
         // Yields by project slug
         const yieldsByProject: Record<string, YieldPool[]> = {};
         yieldData.forEach((y) => {
+          if (!y.project) return;
           const key = y.project.toLowerCase();
           if (!yieldsByProject[key]) yieldsByProject[key] = [];
           yieldsByProject[key].push(y);
