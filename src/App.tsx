@@ -4,6 +4,9 @@ import { ScatterPlotChart } from './components/ScatterPlot';
 import { ProtocolTable } from './components/ProtocolTable';
 import { HistoricChart } from './components/HistoricChart';
 import { CategoryAnalysis } from './components/CategoryAnalysis';
+import { CategoryDeepDive } from './components/CategoryDeepDive';
+import { RightsBreakdown } from './components/RightsBreakdown';
+import { AggregateCharts } from './components/AggregateCharts';
 import { ProtocolDetail } from './components/ProtocolDetail';
 import { Methodology } from './components/Methodology';
 import './App.css';
@@ -16,6 +19,10 @@ function App() {
     totalFees24h,
     revenueByCategory,
     avgScoreByCategory,
+    categoryStats,
+    rightTypeStats,
+    historicalTvl,
+    aggregateRevenueChart,
     loading,
     error,
     selectedProtocol,
@@ -57,6 +64,14 @@ function App() {
         protocolCount={protocols.length}
       />
 
+      {/* Aggregate DeFi Market Charts */}
+      <section className="section">
+        <AggregateCharts
+          historicalTvl={historicalTvl}
+          aggregateRevenue={aggregateRevenueChart}
+        />
+      </section>
+
       {/* Scatter Plots Section */}
       <section className="section">
         <h2 className="section-title">Holder Rights vs Performance</h2>
@@ -80,7 +95,7 @@ function App() {
             yLabel="Market Cap"
           />
         </div>
-        <div className="chart-grid">
+        <div className="chart-grid" style={{ marginTop: 24 }}>
           <ScatterPlotChart
             data={correlationPoints}
             xKey="holderRightsScore"
@@ -100,12 +115,25 @@ function App() {
         </div>
       </section>
 
-      {/* Category Analysis */}
+      {/* Holder Rights Distribution */}
+      <section className="section">
+        <RightsBreakdown
+          rightTypeStats={rightTypeStats}
+          totalProtocols={protocols.length}
+        />
+      </section>
+
+      {/* Category Analysis (simple) */}
       <section className="section">
         <CategoryAnalysis
           revenueByCategory={revenueByCategory}
           avgScoreByCategory={avgScoreByCategory}
         />
+      </section>
+
+      {/* Category Deep Dive */}
+      <section className="section">
+        <CategoryDeepDive categoryStats={categoryStats} />
       </section>
 
       {/* Featured Price Charts */}

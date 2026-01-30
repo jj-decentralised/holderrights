@@ -653,6 +653,117 @@
   color: var(--text-dim);
 }
 
+/* ── Category Summary Table ── */
+
+.category-summary-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.category-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.category-summary-table thead {
+  background: var(--bg-surface);
+  position: sticky;
+  top: 0;
+}
+
+.category-summary-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.category-summary-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.cat-name-cell {
+  font-weight: 500;
+  color: var(--white);
+}
+
+/* ── Rights Breakdown ── */
+
+.rights-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.rights-stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: 4px;
+}
+
+.rights-stat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.rights-stat-label {
+  font-weight: 600;
+  color: var(--white);
+  font-size: 13px;
+}
+
+.rights-stat-weight {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.rights-stat-count {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--white);
+  margin-bottom: 8px;
+}
+
+.rights-stat-pct {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.rights-stat-details {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+/* ── Aggregate Charts ── */
+
+.aggregate-charts-section h2 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+/* ── Deep Dive ── */
+
+.deep-dive-section h2 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 768px) {

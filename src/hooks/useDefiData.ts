@@ -5,10 +5,43 @@ import {
   fetchFeesOverview,
   fetchMultiplePriceCharts,
   fetchProtocolRevenue,
+  fetchHistoricalTvl,
 } from '../services/defiLlama';
 import type { LlamaProtocol, ProtocolFees } from '../services/defiLlama';
 import { PROTOCOL_CLASSIFICATIONS } from '../data/protocolClassifications';
-import type { EnrichedProtocol, CorrelationPoint } from '../types';
+import { HolderRight, HOLDER_RIGHT_DEFINITIONS } from '../types';
+import type { EnrichedProtocol, CorrelationPoint, HolderRight as HolderRightType } from '../types';
+
+// ── Per-category stats ──
+
+export interface CategoryStats {
+  category: string;
+  protocolCount: number;
+  totalRevenue30d: number;
+  totalFees30d: number;
+  totalTvl: number;
+  totalMcap: number;
+  avgScore: number;
+  medianScore: number;
+  minScore: number;
+  maxScore: number;
+  avgFeeToRevenue: number | null;
+  avgTvlToMcap: number | null;
+  protocols: EnrichedProtocol[];
+}
+
+// ── Per-right aggregations ──
+
+export interface RightTypeStats {
+  right: HolderRightType;
+  label: string;
+  weight: number;
+  count: number;
+  avgRevenue30d: number | null;
+  avgMcap: number | null;
+  avgTvl: number;
+  protocolNames: string[];
+}
 
 export interface DashboardData {
   protocols: EnrichedProtocol[];
@@ -17,11 +50,22 @@ export interface DashboardData {
   totalFees24h: number;
   revenueByCategory: Record<string, number>;
   avgScoreByCategory: Record<string, number>;
+  categoryStats: CategoryStats[];
+  rightTypeStats: RightTypeStats[];
+  historicalTvl: { date: number; tvl: number }[];
+  aggregateRevenueChart: { date: number; value: number }[];
   loading: boolean;
   error: string | null;
   selectedProtocol: EnrichedProtocol | null;
   selectProtocol: (slug: string | null) => void;
   revenueHistory: { date: number; value: number }[];
+}
+
+function median(arr: number[]): number {
+  if (!arr.length) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
 export function useDefiData(): DashboardData {
@@ -31,6 +75,10 @@ export function useDefiData(): DashboardData {
   const [totalFees24h, setTotalFees24h] = useState(0);
   const [revenueByCategory, setRevenueByCategory] = useState<Record<string, number>>({});
   const [avgScoreByCategory, setAvgScoreByCategory] = useState<Record<string, number>>({});
+  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
+  const [rightTypeStats, setRightTypeStats] = useState<RightTypeStats[]>([]);
+  const [historicalTvl, setHistoricalTvl] = useState<{ date: number; tvl: number }[]>([]);
+  const [aggregateRevenueChart, setAggregateRevenueChart] = useState<{ date: number; value: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProtocol, setSelectedProtocol] = useState<EnrichedProtocol | null>(null);
@@ -44,7 +92,6 @@ export function useDefiData(): DashboardData {
     const found = protocols.find((p) => p.slug === slug);
     if (found) {
       setSelectedProtocol(found);
-      // Fetch revenue history for this protocol
       fetchProtocolRevenue(slug)
         .then((data) => {
           if (data.totalDataChart) {
@@ -64,15 +111,31 @@ export function useDefiData(): DashboardData {
       try {
         setLoading(true);
 
-        // Fetch all data in parallel
-        const [allProtocols, revenueData, feesData] = await Promise.all([
+        // Fetch all data in parallel — now includes historical TVL
+        const [allProtocols, revenueData, feesData, tvlHistory] = await Promise.all([
           fetchProtocols(),
           fetchRevenueOverview(),
           fetchFeesOverview(),
+          fetchHistoricalTvl().catch(() => [] as { date: number; tvl: number }[]),
         ]);
 
         setTotalRevenue24h(revenueData.total24h || 0);
         setTotalFees24h(feesData.total24h || 0);
+
+        // Store historical TVL (last 365 days for cleaner chart)
+        if (tvlHistory.length > 365) {
+          setHistoricalTvl(tvlHistory.slice(-365));
+        } else {
+          setHistoricalTvl(tvlHistory);
+        }
+
+        // Store aggregate revenue time-series from overview
+        if (revenueData.totalDataChart?.length) {
+          const revChart = revenueData.totalDataChart
+            .filter((d) => d[1] > 0)
+            .map((d) => ({ date: d[0], value: d[1] }));
+          setAggregateRevenueChart(revChart);
+        }
 
         // Index revenue and fees data by slug
         const revenueBySlug: Record<string, ProtocolFees> = {};
@@ -96,7 +159,6 @@ export function useDefiData(): DashboardData {
           .map((c) => c.geckoId)
           .filter(Boolean);
 
-        // Fetch price charts for all classified protocols
         const priceCharts = await fetchMultiplePriceCharts(geckoIds);
 
         // Build enriched protocols
@@ -137,7 +199,6 @@ export function useDefiData(): DashboardData {
           });
         }
 
-        // Sort by TVL descending
         enriched.sort((a, b) => b.tvl - a.tvl);
         setProtocols(enriched);
 
@@ -148,7 +209,6 @@ export function useDefiData(): DashboardData {
             let priceChange30d: number | null = null;
             if (p.priceHistory.length >= 2) {
               const recent = p.priceHistory[p.priceHistory.length - 1].price;
-              // Find price ~30 days ago
               const thirtyDaysAgo = Date.now() / 1000 - 30 * 86400;
               const older = p.priceHistory.find((pt) => pt.timestamp >= thirtyDaysAgo);
               if (older) {
@@ -188,6 +248,78 @@ export function useDefiData(): DashboardData {
         });
         setAvgScoreByCategory(avgScores);
 
+        // ── Build per-category stats ──
+        const catMap: Record<string, EnrichedProtocol[]> = {};
+        enriched.forEach((p) => {
+          if (!catMap[p.category]) catMap[p.category] = [];
+          catMap[p.category].push(p);
+        });
+
+        const catStats: CategoryStats[] = Object.entries(catMap).map(([category, protos]) => {
+          const scores = protos.map((p) => p.holderRightsScore);
+          const revenues = protos.map((p) => p.revenue30d).filter((r): r is number => r !== null);
+          const fees = protos.map((p) => p.fees30d).filter((f): f is number => f !== null);
+          const feeToRevRatios = protos
+            .filter((p) => p.fees30d && p.revenue30d && p.fees30d > 0)
+            .map((p) => p.revenue30d! / p.fees30d!);
+          const tvlToMcapRatios = protos
+            .filter((p) => p.tvl > 0 && p.mcap && p.mcap > 0)
+            .map((p) => p.tvl / p.mcap!);
+
+          return {
+            category,
+            protocolCount: protos.length,
+            totalRevenue30d: revenues.reduce((s, r) => s + r, 0),
+            totalFees30d: fees.reduce((s, f) => s + f, 0),
+            totalTvl: protos.reduce((s, p) => s + p.tvl, 0),
+            totalMcap: protos.reduce((s, p) => s + (p.mcap || 0), 0),
+            avgScore: scores.reduce((s, v) => s + v, 0) / scores.length,
+            medianScore: median(scores),
+            minScore: Math.min(...scores),
+            maxScore: Math.max(...scores),
+            avgFeeToRevenue: feeToRevRatios.length
+              ? feeToRevRatios.reduce((s, v) => s + v, 0) / feeToRevRatios.length
+              : null,
+            avgTvlToMcap: tvlToMcapRatios.length
+              ? tvlToMcapRatios.reduce((s, v) => s + v, 0) / tvlToMcapRatios.length
+              : null,
+            protocols: protos,
+          };
+        }).sort((a, b) => b.totalRevenue30d - a.totalRevenue30d);
+
+        setCategoryStats(catStats);
+
+        // ── Build per-right-type stats ──
+        const rightMap: Record<string, EnrichedProtocol[]> = {};
+        enriched.forEach((p) => {
+          p.holderRights.forEach((r) => {
+            if (!rightMap[r]) rightMap[r] = [];
+            rightMap[r].push(p);
+          });
+        });
+
+        const rStats: RightTypeStats[] = Object.values(HolderRight)
+          .filter((r) => r !== HolderRight.NONE)
+          .map((right) => {
+            const protos = rightMap[right] || [];
+            const revenues = protos.map((p) => p.revenue30d).filter((r): r is number => r !== null);
+            const mcaps = protos.map((p) => p.mcap).filter((m): m is number => m !== null);
+            const def = HOLDER_RIGHT_DEFINITIONS[right];
+            return {
+              right,
+              label: def.label,
+              weight: def.weight,
+              count: protos.length,
+              avgRevenue30d: revenues.length ? revenues.reduce((s, v) => s + v, 0) / revenues.length : null,
+              avgMcap: mcaps.length ? mcaps.reduce((s, v) => s + v, 0) / mcaps.length : null,
+              avgTvl: protos.length ? protos.reduce((s, p) => s + p.tvl, 0) / protos.length : 0,
+              protocolNames: protos.map((p) => p.name),
+            };
+          })
+          .sort((a, b) => b.count - a.count);
+
+        setRightTypeStats(rStats);
+
         setLoading(false);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
@@ -204,6 +336,10 @@ export function useDefiData(): DashboardData {
     totalFees24h,
     revenueByCategory,
     avgScoreByCategory,
+    categoryStats,
+    rightTypeStats,
+    historicalTvl,
+    aggregateRevenueChart,
     loading,
     error,
     selectedProtocol,
