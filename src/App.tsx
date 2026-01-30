@@ -1,5 +1,6 @@
 import { useDefiData } from './hooks/useDefiData';
 import { Header } from './components/Header';
+import { ExecutiveSummary } from './components/ExecutiveSummary';
 import { ScatterPlotChart } from './components/ScatterPlot';
 import { ProtocolTable } from './components/ProtocolTable';
 import { HistoricChart } from './components/HistoricChart';
@@ -74,6 +75,7 @@ function App() {
         totalRevenue24h={totalRevenue24h}
         totalFees24h={totalFees24h}
         protocolCount={protocols.length}
+        analytics={analytics}
       />
 
       {/* Aggregate DeFi Market Charts */}
@@ -85,6 +87,21 @@ function App() {
           aggregateDexVolume={aggregateDexVolumeChart}
         />
       </section>
+
+      {/* Key Findings — auto-generated insights */}
+      {analytics && (
+        <section className="section">
+          <ExecutiveSummary
+            analytics={analytics}
+            totalRevenue24h={totalRevenue24h}
+            totalFees24h={totalFees24h}
+            tvlHistory={historicalTvl}
+            revenueChart={aggregateRevenueChart}
+            feesChart={aggregateFeesChart}
+            dexVolumeChart={aggregateDexVolumeChart}
+          />
+        </section>
+      )}
 
       {/* Market Structure & Concentration */}
       {analytics && (

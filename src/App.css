@@ -64,6 +64,228 @@
   color: var(--text-dim);
 }
 
+/* ── Header Metrics ── */
+
+.header-metrics {
+  margin-top: 28px;
+}
+
+.header-metric-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.metric-block {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 16px 20px;
+  border-radius: 4px;
+}
+
+.metric-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.metric-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--black);
+  letter-spacing: -0.02em;
+}
+
+.metric-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.header-derived-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+}
+
+.derived-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.derived-label {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.derived-value {
+  color: var(--black);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.derived-tag {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* ── Executive Summary / Key Findings ── */
+
+.executive-summary {
+  width: 100%;
+}
+
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.insight-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 16px 20px;
+  border-radius: 4px;
+}
+
+.insight-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.insight-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-family: monospace;
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.insight-tag-security {
+  color: #b33;
+  border-color: #b33;
+  background: #fef2f2;
+}
+
+.insight-tag-revenue {
+  color: #2a7d3f;
+  border-color: #2a7d3f;
+  background: #f0fdf4;
+}
+
+.insight-tag-funding {
+  color: #6b21a8;
+  border-color: #6b21a8;
+  background: #faf5ff;
+}
+
+.insight-headline {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--black);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.insight-detail {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Chart Stats (period analysis) ── */
+
+.chart-container-full {
+  margin-bottom: 0;
+}
+
+.chart-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.chart-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.chart-stats-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.chart-stat-group {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.chart-stat-label {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.chart-stat-val {
+  color: var(--black);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.chg-badge {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: var(--bg-raised);
+}
+
+.chg-badge.positive {
+  color: #2a7d3f;
+  background: #f0fdf4;
+}
+
+.chg-badge.negative {
+  color: #b33;
+  background: #fef2f2;
+}
+
 /* ── Section Titles ── */
 
 .section-title {
@@ -1027,5 +1249,26 @@
 
   .market-stats-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .header-metric-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .insights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-header-row {
+    flex-direction: column;
+  }
+
+  .chart-stats-row {
+    flex-wrap: wrap;
+  }
+
+  .header-derived-row {
+    flex-direction: column;
+    gap: 6px;
   }
 }
