@@ -342,8 +342,17 @@ async function refreshCache() {
   try {
     cache.data = await fetchAllData();
     cache.lastUpdated = Date.now();
+    if (initialLoadResolve) {
+      initialLoadResolve();
+      initialLoadResolve = null;
+    }
   } catch (err) {
     console.error('[cache] Refresh failed:', err.message);
+    // Resolve initial load even on failure so requests don't hang forever
+    if (initialLoadResolve) {
+      initialLoadResolve();
+      initialLoadResolve = null;
+    }
   } finally {
     cache.updating = false;
   }
@@ -354,12 +363,26 @@ function getCacheAge() {
   return Date.now() - cache.lastUpdated;
 }
 
+// Promise that resolves once the first data load completes
+let initialLoadResolve;
+const initialLoadPromise = new Promise((resolve) => { initialLoadResolve = resolve; });
+
 // ── API Routes ──
 
 // Main data endpoint — returns pre-processed protocol data
-app.get('/api/protocols', (_req, res) => {
+app.get('/api/protocols', async (_req, res) => {
+  // Wait up to 5 minutes for initial load
   if (!cache.data) {
-    return res.status(503).json({ error: 'Data not yet loaded. Try again shortly.' });
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5 * 60 * 1000));
+    try {
+      await Promise.race([initialLoadPromise, timeout]);
+    } catch {
+      return res.status(503).json({ error: 'Data loading timed out. Try again shortly.' });
+    }
+  }
+
+  if (!cache.data) {
+    return res.status(503).json({ error: 'Data not available.' });
   }
 
   res.setHeader('Cache-Control', 'public, max-age=300'); // browser cache 5 min
