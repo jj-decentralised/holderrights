@@ -7,6 +7,9 @@ import {
   fetchProtocolRevenue,
   fetchHistoricalTvl,
   fetchDexOverview,
+  fetchDerivativesOverview,
+  fetchOptionsOverview,
+  fetchPricePercentChange,
   fetchTreasuries,
   fetchHacks,
   fetchRaises,
@@ -14,7 +17,7 @@ import {
   setApiKey,
   hasApiKey,
 } from '../services/defiLlama';
-import type { LlamaProtocol, ProtocolFees, DexProtocol, TreasuryProtocol, HackEvent, FundingRound, YieldPool } from '../services/defiLlama';
+import type { LlamaProtocol, ProtocolFees, DexProtocol, DerivativesProtocol, TreasuryProtocol, HackEvent, FundingRound, YieldPool } from '../services/defiLlama';
 import { PROTOCOL_CLASSIFICATIONS } from '../data/protocolClassifications';
 import { HolderRight, HOLDER_RIGHT_DEFINITIONS } from '../types';
 import type { EnrichedProtocol, CorrelationPoint, HolderRight as HolderRightType } from '../types';
@@ -130,12 +133,14 @@ export function useDefiData(): DashboardData {
         setLoading(true);
 
         // ── Phase 1: Core data (always available) ──
-        const [allProtocols, revenueData, feesData, tvlHistory, dexData] = await Promise.all([
+        const [allProtocols, revenueData, feesData, tvlHistory, dexData, derivsData, optionsData] = await Promise.all([
           fetchProtocols(),
           fetchRevenueOverview(),
           fetchFeesOverview(),
           fetchHistoricalTvl().catch(() => [] as { date: number; tvl: number }[]),
           fetchDexOverview().catch(() => null),
+          fetchDerivativesOverview().catch(() => null),
+          fetchOptionsOverview().catch(() => null),
         ]);
 
         setTotalRevenue24h(revenueData.total24h || 0);
@@ -206,6 +211,20 @@ export function useDefiData(): DashboardData {
           dexProtos.forEach((p) => { dexBySlug[p.slug] = p; });
         }
 
+        // Derivatives volumes by slug
+        const derivsBySlug: Record<string, DerivativesProtocol> = {};
+        const derivsProtos = derivsData?.protocols;
+        if (Array.isArray(derivsProtos)) {
+          derivsProtos.forEach((p) => { derivsBySlug[p.slug] = p; });
+        }
+
+        // Options volumes by slug
+        const optionsBySlug: Record<string, DerivativesProtocol> = {};
+        const optionsProtos = optionsData?.protocols;
+        if (Array.isArray(optionsProtos)) {
+          optionsProtos.forEach((p) => { optionsBySlug[p.slug] = p; });
+        }
+
         // Treasury by normalized name (treasury API uses names, not slugs)
         const treasuryByName: Record<string, TreasuryProtocol> = {};
         const treasuryBySlug: Record<string, TreasuryProtocol> = {};
@@ -248,6 +267,23 @@ export function useDefiData(): DashboardData {
 
         const priceCharts = await fetchMultiplePriceCharts(geckoIds);
 
+        // ── Fetch multi-period price percentage changes ──
+        let priceChanges: Record<string, Record<string, number>> = {};
+        try {
+          const coins = geckoIds.map((id) => `coingecko:${id}`);
+          // Fetch in batches of 25 to avoid URL length limits
+          const changeBatchSize = 25;
+          for (let i = 0; i < coins.length; i += changeBatchSize) {
+            const batch = coins.slice(i, i + changeBatchSize);
+            const result = await fetchPricePercentChange(batch);
+            if (result && typeof result === 'object') {
+              Object.assign(priceChanges, result);
+            }
+          }
+        } catch {
+          // Price changes are supplementary — continue without them
+        }
+
         // ── Build enriched protocols ──
         const enriched: EnrichedProtocol[] = [];
 
@@ -261,6 +297,15 @@ export function useDefiData(): DashboardData {
           const tvl = proto?.tvl || 0;
           const mcap = proto?.mcap || null;
           const revenue30d = revenue?.total30d || null;
+          const deriv = derivsBySlug[classification.slug];
+          const option = optionsBySlug[classification.slug];
+
+          // Price change data
+          const coinKey = `coingecko:${classification.geckoId}`;
+          const pctData = priceChanges[coinKey];
+          const priceChange1d = pctData?.['1d'] ?? null;
+          const priceChange7d = pctData?.['7d'] ?? null;
+          const priceChange30d = pctData?.['30d'] ?? null;
 
           // Match treasury data
           const normalName = normalizeName(classification.name);
@@ -331,6 +376,21 @@ export function useDefiData(): DashboardData {
             topPoolApy: topApy,
             avgPoolApy: avgApy,
             yieldPoolCount: pools.length,
+            // Price changes
+            priceChange1d,
+            priceChange7d,
+            priceChange30d,
+            // Chain data
+            chains: proto?.chains || [],
+            primaryChain: proto?.chain || '',
+            chainCount: proto?.chains?.length || 0,
+            // TVL momentum
+            tvlChange1d: proto?.change_1d ?? null,
+            tvlChange7d: proto?.change_7d ?? null,
+            tvlChange1m: proto?.change_1m ?? null,
+            // Derivatives & options
+            derivativesVolume24h: deriv?.total24h ?? null,
+            optionsVolume24h: option?.total24h ?? null,
           });
         }
 
@@ -341,13 +401,14 @@ export function useDefiData(): DashboardData {
         const points: CorrelationPoint[] = enriched
           .filter((p) => p.mcap && p.revenue30d)
           .map((p) => {
-            let priceChange30d: number | null = null;
-            if (p.priceHistory.length >= 2) {
+            // Use API-sourced price change if available, fallback to chart computation
+            let pc30d: number | null = p.priceChange30d;
+            if (pc30d === null && p.priceHistory.length >= 2) {
               const recent = p.priceHistory[p.priceHistory.length - 1].price;
               const thirtyDaysAgo = Date.now() / 1000 - 30 * 86400;
               const older = p.priceHistory.find((pt) => pt.timestamp >= thirtyDaysAgo);
               if (older) {
-                priceChange30d = ((recent - older.price) / older.price) * 100;
+                pc30d = ((recent - older.price) / older.price) * 100;
               }
             }
             return {
@@ -358,7 +419,7 @@ export function useDefiData(): DashboardData {
               mcap: p.mcap,
               revenue30d: p.revenue30d,
               tvl: p.tvl,
-              priceChange30d,
+              priceChange30d: pc30d,
               mcapToRevenue: p.mcapToRevenue,
             };
           });

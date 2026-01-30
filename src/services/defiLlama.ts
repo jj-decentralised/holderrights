@@ -141,6 +141,53 @@ export async function fetchDexOverview(): Promise<DexOverview> {
   return fetchJson<DexOverview>(`${BASE}/overview/dexs?excludeTotalDataChartBreakdown=true`);
 }
 
+// ── Derivatives & Options Volumes (FREE) ──
+
+export interface DerivativesOverview {
+  totalDataChart: [number, number][];
+  protocols: DerivativesProtocol[];
+  total24h: number;
+  total7d: number;
+  total30d: number;
+}
+
+export interface DerivativesProtocol {
+  name: string;
+  slug: string;
+  total24h: number | null;
+  total7d: number | null;
+  total30d: number | null;
+  totalAllTime: number | null;
+  category: string;
+  chains: string[];
+}
+
+export async function fetchDerivativesOverview(): Promise<DerivativesOverview> {
+  return fetchJson<DerivativesOverview>(`${BASE}/overview/derivatives?excludeTotalDataChartBreakdown=true`);
+}
+
+export async function fetchOptionsOverview(): Promise<DerivativesOverview> {
+  return fetchJson<DerivativesOverview>(`${BASE}/overview/options?excludeTotalDataChartBreakdown=true`);
+}
+
+// ── Stablecoins (FREE) ──
+
+export interface StablecoinData {
+  id: string;
+  name: string;
+  symbol: string;
+  gecko_id: string;
+  pegType: string;
+  pegMechanism: string;
+  circulating: { peggedUSD: number };
+  price: number | null;
+  chains: string[];
+}
+
+export async function fetchStablecoins(): Promise<{ peggedAssets: StablecoinData[] }> {
+  return fetchJson<{ peggedAssets: StablecoinData[] }>(`https://stablecoins.llama.fi/stablecoins?includePrices=true`);
+}
+
 // ── Coin Prices ──
 
 export interface CoinPriceResponse {

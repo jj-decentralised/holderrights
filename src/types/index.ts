@@ -197,6 +197,21 @@ export interface EnrichedProtocol {
   topPoolApy: number | null;
   avgPoolApy: number | null;
   yieldPoolCount: number;
+  // Price change data (free API — coins.llama.fi)
+  priceChange1d: number | null;
+  priceChange7d: number | null;
+  priceChange30d: number | null;
+  // Chain concentration (from protocols API)
+  chains: string[];
+  primaryChain: string;
+  chainCount: number;
+  // TVL momentum (from protocols API)
+  tvlChange1d: number | null;
+  tvlChange7d: number | null;
+  tvlChange1m: number | null;
+  // Derivatives & options volumes (free API)
+  derivativesVolume24h: number | null;
+  optionsVolume24h: number | null;
 }
 
 export interface CorrelationPoint {

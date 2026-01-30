@@ -16,6 +16,16 @@ function fmt(n: number | null): string {
   return `$${n.toFixed(0)}`;
 }
 
+function pctFmt(n: number | null): string {
+  if (n === null || n === undefined) return '—';
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
+}
+
+function pctClass(n: number | null): string {
+  if (n === null) return '';
+  return n >= 0 ? 'positive' : 'negative';
+}
+
 export function ProtocolDetail({ protocol, revenueHistory, onClose }: ProtocolDetailProps) {
   const p = protocol;
   const hasTreasury = p.treasuryTotal !== null && p.treasuryTotal > 0;
@@ -23,6 +33,9 @@ export function ProtocolDetail({ protocol, revenueHistory, onClose }: ProtocolDe
   const hasHacks = p.hackCount > 0;
   const hasYields = p.yieldPoolCount > 0;
   const hasDexVolume = p.dexVolume24h !== null;
+  const hasDerivatives = p.derivativesVolume24h !== null;
+  const hasOptions = p.optionsVolume24h !== null;
+  const hasPriceChanges = p.priceChange1d !== null || p.priceChange7d !== null || p.priceChange30d !== null;
 
   return (
     <div className="detail-overlay" onClick={(e) => {
@@ -76,7 +89,88 @@ export function ProtocolDetail({ protocol, revenueHistory, onClose }: ProtocolDe
               <div className="stat-value">{fmt(p.dexVolume30d)}</div>
             </div>
           )}
+          {hasDerivatives && (
+            <div className="detail-stat">
+              <div className="stat-label">Derivatives Vol (24h)</div>
+              <div className="stat-value">{fmt(p.derivativesVolume24h)}</div>
+            </div>
+          )}
+          {hasOptions && (
+            <div className="detail-stat">
+              <div className="stat-label">Options Vol (24h)</div>
+              <div className="stat-value">{fmt(p.optionsVolume24h)}</div>
+            </div>
+          )}
         </div>
+
+        {/* Price & TVL Momentum */}
+        {(hasPriceChanges || p.tvlChange1d !== null) && (
+          <div className="detail-section">
+            <h3>Price & TVL Momentum</h3>
+            <div className="detail-stats">
+              {p.priceChange1d !== null && (
+                <div className="detail-stat">
+                  <div className="stat-label">Price 1d</div>
+                  <div className={`stat-value ${pctClass(p.priceChange1d)}`}>{pctFmt(p.priceChange1d)}</div>
+                </div>
+              )}
+              {p.priceChange7d !== null && (
+                <div className="detail-stat">
+                  <div className="stat-label">Price 7d</div>
+                  <div className={`stat-value ${pctClass(p.priceChange7d)}`}>{pctFmt(p.priceChange7d)}</div>
+                </div>
+              )}
+              {p.priceChange30d !== null && (
+                <div className="detail-stat">
+                  <div className="stat-label">Price 30d</div>
+                  <div className={`stat-value ${pctClass(p.priceChange30d)}`}>{pctFmt(p.priceChange30d)}</div>
+                </div>
+              )}
+              {p.tvlChange1d !== null && (
+                <div className="detail-stat">
+                  <div className="stat-label">TVL 1d</div>
+                  <div className={`stat-value ${pctClass(p.tvlChange1d)}`}>{pctFmt(p.tvlChange1d)}</div>
+                </div>
+              )}
+              {p.tvlChange7d !== null && (
+                <div className="detail-stat">
+                  <div className="stat-label">TVL 7d</div>
+                  <div className={`stat-value ${pctClass(p.tvlChange7d)}`}>{pctFmt(p.tvlChange7d)}</div>
+                </div>
+              )}
+              {p.tvlChange1m !== null && (
+                <div className="detail-stat">
+                  <div className="stat-label">TVL 1m</div>
+                  <div className={`stat-value ${pctClass(p.tvlChange1m)}`}>{pctFmt(p.tvlChange1m)}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Chain Distribution */}
+        {p.chainCount > 0 && (
+          <div className="detail-section">
+            <h3>Chain Distribution</h3>
+            <div className="detail-stats">
+              <div className="detail-stat">
+                <div className="stat-label">Primary Chain</div>
+                <div className="stat-value" style={{ fontSize: '16px' }}>{p.primaryChain}</div>
+              </div>
+              <div className="detail-stat">
+                <div className="stat-label">Total Chains</div>
+                <div className="stat-value">{p.chainCount}</div>
+              </div>
+            </div>
+            {p.chains.length > 0 && (
+              <div className="chain-list">
+                {p.chains.map((chain) => (
+                  <span key={chain} className="chain-badge">{chain}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Treasury Section */}
         {hasTreasury && (

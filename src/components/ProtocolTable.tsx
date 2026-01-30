@@ -9,7 +9,8 @@ interface ProtocolTableProps {
 }
 
 type SortKey = 'name' | 'tvl' | 'mcap' | 'holderRightsScore' | 'revenue30d' | 'mcapToRevenue' | 'fees30d'
-  | 'treasuryTotal' | 'totalRaised' | 'hackCount' | 'dexVolume24h' | 'topPoolApy';
+  | 'treasuryTotal' | 'totalRaised' | 'hackCount' | 'dexVolume24h' | 'topPoolApy'
+  | 'priceChange1d' | 'priceChange7d' | 'priceChange30d' | 'tvlChange7d' | 'chainCount';
 
 function fmt(n: number | null): string {
   if (n === null || n === undefined) return '—';
@@ -17,6 +18,16 @@ function fmt(n: number | null): string {
   if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
   if (Math.abs(n) >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
   return `$${n.toFixed(0)}`;
+}
+
+function pctFmt(n: number | null): string {
+  if (n === null || n === undefined) return '—';
+  return `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
+}
+
+function pctClass(n: number | null): string {
+  if (n === null) return '';
+  return n >= 0 ? 'positive' : 'negative';
 }
 
 function rightsBadge(right: HolderRight) {
@@ -112,6 +123,11 @@ export function ProtocolTable({ protocols, onSelect, hasProData }: ProtocolTable
               <th onClick={() => handleSort('revenue30d')}>Revenue (30d){sortIndicator('revenue30d')}</th>
               <th onClick={() => handleSort('fees30d')}>Fees (30d){sortIndicator('fees30d')}</th>
               <th onClick={() => handleSort('mcapToRevenue')}>MC/Rev{sortIndicator('mcapToRevenue')}</th>
+              <th onClick={() => handleSort('priceChange1d')}>Price 1d{sortIndicator('priceChange1d')}</th>
+              <th onClick={() => handleSort('priceChange7d')}>Price 7d{sortIndicator('priceChange7d')}</th>
+              <th onClick={() => handleSort('priceChange30d')}>Price 30d{sortIndicator('priceChange30d')}</th>
+              <th onClick={() => handleSort('tvlChange7d')}>TVL 7d{sortIndicator('tvlChange7d')}</th>
+              <th onClick={() => handleSort('chainCount')}>Chains{sortIndicator('chainCount')}</th>
               {hasProData && (
                 <>
                   <th onClick={() => handleSort('treasuryTotal')}>Treasury{sortIndicator('treasuryTotal')}</th>
@@ -141,6 +157,11 @@ export function ProtocolTable({ protocols, onSelect, hasProData }: ProtocolTable
                 <td className="num-cell">
                   {p.mcapToRevenue !== null ? `${p.mcapToRevenue.toFixed(1)}x` : '—'}
                 </td>
+                <td className={`num-cell ${pctClass(p.priceChange1d)}`}>{pctFmt(p.priceChange1d)}</td>
+                <td className={`num-cell ${pctClass(p.priceChange7d)}`}>{pctFmt(p.priceChange7d)}</td>
+                <td className={`num-cell ${pctClass(p.priceChange30d)}`}>{pctFmt(p.priceChange30d)}</td>
+                <td className={`num-cell ${pctClass(p.tvlChange7d)}`}>{pctFmt(p.tvlChange7d)}</td>
+                <td className="num-cell">{p.chainCount > 0 ? p.chainCount : '—'}</td>
                 {hasProData && (
                   <>
                     <td className="num-cell">{fmt(p.treasuryTotal)}</td>

@@ -475,6 +475,35 @@
   font-weight: 600;
 }
 
+/* ── Percentage colors ── */
+
+.positive {
+  color: #2a7d3f;
+}
+
+.negative {
+  color: #b33;
+}
+
+/* ── Chain badges ── */
+
+.chain-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.chain-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-raised);
+}
+
 .detail-rights {
   margin-bottom: 32px;
 }
