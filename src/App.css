@@ -213,78 +213,219 @@
   margin: 0;
 }
 
-/* ── Chart Stats (period analysis) ── */
+/* ── Chart Cards ── */
 
-.chart-container-full {
+.chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  transition: box-shadow 0.2s;
+}
+
+.chart-card:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+}
+
+.chart-card-full {
   margin-bottom: 0;
 }
 
-.chart-header-row {
+.chart-card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
-.chart-stats-row {
+.chart-card-title {
+  font-size: 16px;
+  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
+  margin: 0 0 4px;
+}
+
+.chart-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--black);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.chart-card-unit {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+
+.chart-card-right {
   flex-shrink: 0;
 }
 
-.chart-stats-col {
+.chart-badges {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.chart-badges-col {
   display: flex;
   flex-direction: column;
   gap: 4px;
   align-items: flex-end;
 }
 
-.chart-stat-group {
+.chart-badge-group {
   display: flex;
   align-items: baseline;
   gap: 6px;
   font-size: 13px;
 }
 
-.chart-stat-label {
+.chart-badge-label {
   color: var(--text-dim);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
-.chart-stat-val {
+.chart-badge-val {
   color: var(--black);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.chart-stat-item {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
+.chart-badge-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+  margin: 0 2px;
 }
 
 .chg-badge {
   font-size: 12px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  padding: 1px 5px;
-  border-radius: 2px;
+  padding: 2px 7px;
+  border-radius: 4px;
   background: var(--bg-raised);
 }
 
 .chg-badge.positive {
-  color: #2a7d3f;
-  background: #f0fdf4;
+  color: #1a7a35;
+  background: #eef8f0;
 }
 
 .chg-badge.negative {
   color: #b33;
   background: #fef2f2;
 }
+
+/* ── Period Selector ── */
+
+.period-selector {
+  display: flex;
+  gap: 0;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+.period-selector-sm {
+  margin-bottom: 12px;
+}
+
+.period-btn {
+  background: none;
+  border: none;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.15s;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.period-btn:hover {
+  color: var(--black);
+  background: rgba(0,0,0,0.03);
+}
+
+.period-active {
+  color: var(--black);
+  background: var(--bg-surface);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ── Agg Charts Header ── */
+
+.agg-charts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+/* ── Zoomable Chart ── */
+
+.zoomable-chart {
+  position: relative;
+  user-select: none;
+}
+
+.zoom-hint {
+  position: absolute;
+  top: 4px;
+  right: 16px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.zoom-reset-btn {
+  position: absolute;
+  top: 4px;
+  left: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--black);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 10px;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.15s;
+}
+
+.zoom-reset-btn:hover {
+  background: var(--border);
+}
+
+/* Legacy compat */
+.chart-container-full { margin-bottom: 0; }
+.chart-header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 12px; }
+.chart-stats-row { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.chart-stats-col { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.chart-stat-group { display: flex; align-items: baseline; gap: 6px; font-size: 13px; }
+.chart-stat-label { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.chart-stat-val { color: var(--black); font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart-stat-item { display: flex; align-items: baseline; gap: 6px; }
 
 /* ── Section Titles ── */
 
@@ -306,7 +447,7 @@
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  gap: 20px;
 }
 
 /* ── Tab Navigation ── */
@@ -507,13 +648,13 @@
   }
 }
 
-/* ── Chart Container ── */
+/* ── Chart Container (legacy) ── */
 
 .chart-container {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 20px;
+  border-radius: 8px;
+  padding: 24px;
 }
 
 .chart-title {
@@ -540,7 +681,7 @@
 }
 
 .chart-empty {
-  height: 300px;
+  height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1475,5 +1616,29 @@
   .tab-btn {
     padding: 10px 16px;
     font-size: 14px;
+  }
+
+  .agg-charts-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .chart-card-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chart-badges {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chart-card-value {
+    font-size: 22px;
+  }
+
+  .period-btn {
+    padding: 5px 10px;
+    font-size: 11px;
   }
 }
