@@ -31,7 +31,6 @@ function fmtShort(n: number): string {
   return n.toFixed(0);
 }
 
-// Scatter data: one point per category
 interface CatScatterPoint {
   category: string;
   avgScore: number;
@@ -40,7 +39,6 @@ interface CatScatterPoint {
   protocolCount: number;
 }
 
-// Score range data for box-plot-style viz
 interface ScoreRangePoint {
   category: string;
   min: number;
@@ -51,7 +49,6 @@ interface ScoreRangePoint {
 }
 
 export function CategoryDeepDive({ categoryStats }: CategoryDeepDiveProps) {
-  // Scatter: avg score vs total revenue, bubble size = TVL
   const scatterData: CatScatterPoint[] = categoryStats
     .filter((c) => c.totalRevenue30d > 0)
     .map((c) => ({
@@ -62,7 +59,6 @@ export function CategoryDeepDive({ categoryStats }: CategoryDeepDiveProps) {
       protocolCount: c.protocolCount,
     }));
 
-  // TVL by category (top 15)
   const tvlData = categoryStats
     .filter((c) => c.totalTvl > 0)
     .sort((a, b) => b.totalTvl - a.totalTvl)
@@ -73,7 +69,6 @@ export function CategoryDeepDive({ categoryStats }: CategoryDeepDiveProps) {
       mcap: c.totalMcap,
     }));
 
-  // Score range data
   const scoreRangeData: ScoreRangePoint[] = categoryStats
     .filter((c) => c.protocolCount >= 2)
     .sort((a, b) => b.avgScore - a.avgScore)
@@ -87,7 +82,6 @@ export function CategoryDeepDive({ categoryStats }: CategoryDeepDiveProps) {
       range: [c.minScore, c.maxScore],
     }));
 
-  // Fee efficiency: revenue/fees ratio by category
   const efficiencyData = categoryStats
     .filter((c) => c.avgFeeToRevenue !== null && c.totalRevenue30d > 0)
     .sort((a, b) => (b.avgFeeToRevenue || 0) - (a.avgFeeToRevenue || 0))
@@ -105,7 +99,6 @@ export function CategoryDeepDive({ categoryStats }: CategoryDeepDiveProps) {
         revenue efficiency, and score spread within each category.
       </p>
 
-      {/* Summary table */}
       <div className="category-summary-table-wrapper">
         <table className="category-summary-table">
           <thead>
@@ -140,26 +133,25 @@ export function CategoryDeepDive({ categoryStats }: CategoryDeepDiveProps) {
       </div>
 
       <div className="chart-grid" style={{ marginTop: 32 }}>
-        {/* Scatter: Avg Score vs Total Revenue (bubble = TVL) */}
         <div className="chart-container">
           <h3 className="chart-title">Avg Holder Rights Score vs Category Revenue</h3>
           <div className="chart-meta">Bubble size = total category TVL</div>
           <ResponsiveContainer width="100%" height={350}>
             <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
               <XAxis
                 dataKey="avgScore"
                 name="Avg Score"
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
-                label={{ value: 'Avg Holder Rights Score', position: 'bottom', fill: '#666', fontSize: 11 }}
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
+                label={{ value: 'Avg Holder Rights Score', position: 'bottom', fill: '#888', fontSize: 11 }}
               />
               <YAxis
                 dataKey="totalRevenue30d"
                 name="Revenue"
                 tickFormatter={fmt}
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
               />
               <ZAxis dataKey="totalTvl" range={[40, 400]} name="TVL" />
               <Tooltip
@@ -179,39 +171,38 @@ export function CategoryDeepDive({ categoryStats }: CategoryDeepDiveProps) {
               />
               <Scatter data={scatterData}>
                 {scatterData.map((_, i) => (
-                  <Cell key={i} fill={i % 2 === 0 ? '#fff' : '#888'} />
+                  <Cell key={i} fill={i % 2 === 0 ? '#1a1a1a' : '#888'} />
                 ))}
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
         </div>
 
-        {/* TVL by category */}
         <div className="chart-container">
           <h3 className="chart-title">Total Value Locked by Category</h3>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={tvlData} margin={{ top: 10, right: 20, bottom: 60, left: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
               <XAxis
                 dataKey="category"
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
                 angle={-45}
                 textAnchor="end"
                 height={80}
               />
               <YAxis
                 tickFormatter={(v) => `$${fmtShort(v)}`}
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
               />
               <Tooltip
                 formatter={(value) => [fmt(Number(value)), 'TVL']}
-                contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
+                contentStyle={{ background: '#fff', border: '1px solid #ddd', color: '#333' }}
               />
-              <Bar dataKey="tvl" fill="#fff" radius={[2, 2, 0, 0]}>
+              <Bar dataKey="tvl" fill="#1a1a1a" radius={[2, 2, 0, 0]}>
                 {tvlData.map((_, i) => (
-                  <Cell key={i} fill={i % 2 === 0 ? '#fff' : '#888'} />
+                  <Cell key={i} fill={i % 2 === 0 ? '#1a1a1a' : '#888'} />
                 ))}
               </Bar>
             </BarChart>
@@ -220,68 +211,66 @@ export function CategoryDeepDive({ categoryStats }: CategoryDeepDiveProps) {
       </div>
 
       <div className="chart-grid" style={{ marginTop: 24 }}>
-        {/* Score range by category (min/avg/max) */}
         <div className="chart-container">
           <h3 className="chart-title">Holder Rights Score Spread by Category</h3>
           <div className="chart-meta">Showing min, average, and max scores per category</div>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={scoreRangeData} margin={{ top: 10, right: 20, bottom: 60, left: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
               <XAxis
                 dataKey="category"
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
                 angle={-45}
                 textAnchor="end"
                 height={80}
               />
               <YAxis
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
                 domain={[0, 50]}
               />
               <Tooltip
-                contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
+                contentStyle={{ background: '#fff', border: '1px solid #ddd', color: '#333' }}
                 formatter={(value, name) => [
                   Number(value).toFixed(1),
                   name === 'max' ? 'Max Score' : name === 'avg' ? 'Avg Score' : 'Min Score',
                 ]}
               />
-              <Bar dataKey="min" fill="#333" radius={[2, 2, 0, 0]} name="min" />
-              <Bar dataKey="avg" fill="#999" radius={[2, 2, 0, 0]} name="avg" />
-              <Bar dataKey="max" fill="#fff" radius={[2, 2, 0, 0]} name="max" />
+              <Bar dataKey="min" fill="#ccc" radius={[2, 2, 0, 0]} name="min" />
+              <Bar dataKey="avg" fill="#888" radius={[2, 2, 0, 0]} name="avg" />
+              <Bar dataKey="max" fill="#1a1a1a" radius={[2, 2, 0, 0]} name="max" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* Revenue efficiency */}
         {efficiencyData.length > 0 && (
           <div className="chart-container">
             <h3 className="chart-title">Revenue Capture Rate by Category</h3>
             <div className="chart-meta">Average % of fees captured as protocol revenue</div>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={efficiencyData} margin={{ top: 10, right: 20, bottom: 60, left: 40 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
                 <XAxis
                   dataKey="category"
-                  tick={{ fill: '#999', fontSize: 11 }}
-                  stroke="#333"
+                  tick={{ fill: '#888', fontSize: 11 }}
+                  stroke="#ccc"
                   angle={-45}
                   textAnchor="end"
                   height={80}
                 />
                 <YAxis
                   tickFormatter={(v) => `${v}%`}
-                  tick={{ fill: '#999', fontSize: 11 }}
-                  stroke="#333"
+                  tick={{ fill: '#888', fontSize: 11 }}
+                  stroke="#ccc"
                 />
                 <Tooltip
                   formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Revenue/Fees']}
-                  contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
+                  contentStyle={{ background: '#fff', border: '1px solid #ddd', color: '#333' }}
                 />
-                <Bar dataKey="ratio" fill="#fff" radius={[2, 2, 0, 0]}>
+                <Bar dataKey="ratio" fill="#1a1a1a" radius={[2, 2, 0, 0]}>
                   {efficiencyData.map((_, i) => (
-                    <Cell key={i} fill={i % 2 === 0 ? '#fff' : '#888'} />
+                    <Cell key={i} fill={i % 2 === 0 ? '#1a1a1a' : '#888'} />
                   ))}
                 </Bar>
               </BarChart>

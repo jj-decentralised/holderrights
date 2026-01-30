@@ -35,7 +35,6 @@ export function AggregateCharts({ historicalTvl, aggregateRevenue }: AggregateCh
       </p>
 
       <div className="chart-grid">
-        {/* Historical TVL */}
         {historicalTvl.length > 0 && (
           <div className="chart-container">
             <h3 className="chart-title">Total DeFi TVL (1 Year)</h3>
@@ -44,33 +43,33 @@ export function AggregateCharts({ historicalTvl, aggregateRevenue }: AggregateCh
               <AreaChart data={historicalTvl} margin={{ top: 5, right: 20, bottom: 25, left: 50 }}>
                 <defs>
                   <linearGradient id="tvlGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fff" stopOpacity={0.15} />
-                    <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#1a1a1a" stopOpacity={0.1} />
+                    <stop offset="100%" stopColor="#1a1a1a" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDate}
-                  tick={{ fill: '#666', fontSize: 11 }}
-                  stroke="#333"
+                  tick={{ fill: '#888', fontSize: 11 }}
+                  stroke="#ccc"
                   interval="preserveStartEnd"
                 />
                 <YAxis
                   tickFormatter={fmtDollar}
-                  tick={{ fill: '#666', fontSize: 11 }}
-                  stroke="#333"
+                  tick={{ fill: '#888', fontSize: 11 }}
+                  stroke="#ccc"
                   domain={['auto', 'auto']}
                 />
                 <Tooltip
                   formatter={(value) => [fmtDollar(Number(value)), 'TVL']}
                   labelFormatter={(ts) => formatDate(ts as number)}
-                  contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
+                  contentStyle={{ background: '#fff', border: '1px solid #ddd', color: '#333' }}
                 />
                 <Area
                   type="monotone"
                   dataKey="tvl"
-                  stroke="#fff"
+                  stroke="#1a1a1a"
                   strokeWidth={1.5}
                   fill="url(#tvlGrad)"
                   dot={false}
@@ -80,7 +79,6 @@ export function AggregateCharts({ historicalTvl, aggregateRevenue }: AggregateCh
           </div>
         )}
 
-        {/* Aggregate Revenue */}
         {aggregateRevenue.length > 0 && (
           <div className="chart-container">
             <h3 className="chart-title">DeFi Daily Revenue (All Protocols)</h3>
@@ -91,32 +89,32 @@ export function AggregateCharts({ historicalTvl, aggregateRevenue }: AggregateCh
               <AreaChart data={aggregateRevenue} margin={{ top: 5, right: 20, bottom: 25, left: 50 }}>
                 <defs>
                   <linearGradient id="aggRevGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fff" stopOpacity={0.2} />
-                    <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#1a1a1a" stopOpacity={0.12} />
+                    <stop offset="100%" stopColor="#1a1a1a" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={formatDate}
-                  tick={{ fill: '#666', fontSize: 11 }}
-                  stroke="#333"
+                  tick={{ fill: '#888', fontSize: 11 }}
+                  stroke="#ccc"
                   interval="preserveStartEnd"
                 />
                 <YAxis
                   tickFormatter={fmtDollar}
-                  tick={{ fill: '#666', fontSize: 11 }}
-                  stroke="#333"
+                  tick={{ fill: '#888', fontSize: 11 }}
+                  stroke="#ccc"
                 />
                 <Tooltip
                   formatter={(value) => [fmtDollar(Number(value)), 'Daily Revenue']}
                   labelFormatter={(ts) => formatDate(ts as number)}
-                  contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
+                  contentStyle={{ background: '#fff', border: '1px solid #ddd', color: '#333' }}
                 />
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#fff"
+                  stroke="#1a1a1a"
                   strokeWidth={1.5}
                   fill="url(#aggRevGrad)"
                   dot={false}

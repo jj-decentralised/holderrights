@@ -2,6 +2,25 @@ const BASE = 'https://api.llama.fi';
 const COINS = 'https://coins.llama.fi';
 const FEES_BASE = 'https://api.llama.fi';
 
+// Pro API base — use when API key is available
+const PRO_BASE = 'https://pro-api.llama.fi';
+
+// Set via environment variable or runtime config
+let _apiKey: string | null = null;
+
+export function setApiKey(key: string) {
+  _apiKey = key;
+}
+
+export function hasApiKey(): boolean {
+  return _apiKey !== null;
+}
+
+function proUrl(path: string): string {
+  if (_apiKey) return `${PRO_BASE}/${_apiKey}${path}`;
+  return `${BASE}${path}`;
+}
+
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`API error ${res.status}: ${url}`);
@@ -97,6 +116,31 @@ export async function fetchProtocolRevenue(slug: string): Promise<ProtocolFeeSum
   return fetchJson<ProtocolFeeSummary>(`${FEES_BASE}/summary/fees/${slug}?dataType=dailyRevenue`);
 }
 
+// ── DEX Volumes (FREE) ──
+
+export interface DexOverview {
+  totalDataChart: [number, number][];
+  protocols: DexProtocol[];
+  total24h: number;
+  total7d: number;
+  total30d: number;
+}
+
+export interface DexProtocol {
+  name: string;
+  slug: string;
+  total24h: number | null;
+  total7d: number | null;
+  total30d: number | null;
+  totalAllTime: number | null;
+  category: string;
+  chains: string[];
+}
+
+export async function fetchDexOverview(): Promise<DexOverview> {
+  return fetchJson<DexOverview>(`${BASE}/overview/dexs?excludeTotalDataChartBreakdown=true`);
+}
+
 // ── Coin Prices ──
 
 export interface CoinPriceResponse {
@@ -143,7 +187,151 @@ export async function fetchHistoricalTvl(): Promise<{ date: number; tvl: number 
   return fetchJson<{ date: number; tvl: number }[]>(`${BASE}/v2/historicalChainTvl`);
 }
 
-// ── Batch fetch helpers ──
+// ═══════════════════════════════════════════════════════════
+// PRO API ENDPOINTS (require API key)
+// ═══════════════════════════════════════════════════════════
+
+// ── Token Emissions & Unlocks ──
+
+export interface EmissionEvent {
+  date: string;
+  label: string;
+  token: string;
+  unlocked: number;
+  timestamp: number;
+}
+
+export interface ProtocolEmissions {
+  name: string;
+  events: EmissionEvent[];
+  hallmarks: { date: number; text: string }[];
+  tokenPrice: Record<string, number>;
+  sources: string[];
+  token: string;
+  geckoId: string;
+  futures: EmissionEvent[];
+}
+
+export async function fetchAllEmissions(): Promise<ProtocolEmissions[]> {
+  return fetchJson<ProtocolEmissions[]>(proUrl('/api/emissions'));
+}
+
+export async function fetchProtocolEmissions(protocol: string): Promise<ProtocolEmissions> {
+  return fetchJson<ProtocolEmissions>(proUrl(`/api/emission/${protocol}`));
+}
+
+// ── Treasury Data ──
+
+export interface TreasuryProtocol {
+  name: string;
+  slug: string;
+  category: string;
+  gecko_id: string;
+  tvl: number;
+  ownTokens: number;
+  stablecoins: number;
+  majors: number;
+  others: number;
+  total: number;
+}
+
+export async function fetchTreasuries(): Promise<TreasuryProtocol[]> {
+  return fetchJson<TreasuryProtocol[]>(proUrl('/api/treasuries'));
+}
+
+// ── Yield Pools ──
+
+export interface YieldPool {
+  chain: string;
+  project: string;
+  symbol: string;
+  tvlUsd: number;
+  apy: number;
+  apyBase: number | null;
+  apyReward: number | null;
+  rewardTokens: string[];
+  pool: string;
+  apyPct1D: number | null;
+  apyPct7D: number | null;
+  apyPct30D: number | null;
+  stablecoin: boolean;
+  ilRisk: string;
+  exposure: string;
+  predictions: { predictedClass: string; predictedProbability: number; binnedConfidence: number };
+  poolMeta: string | null;
+  mu: number;
+  sigma: number;
+  count: number;
+  outlier: boolean;
+  underlyingTokens: string[];
+  il7d: number | null;
+  apyBase7d: number | null;
+  apyMean30d: number | null;
+  volumeUsd1d: number | null;
+  volumeUsd7d: number | null;
+}
+
+export async function fetchYieldPools(): Promise<{ data: YieldPool[] }> {
+  return fetchJson<{ data: YieldPool[] }>(proUrl('/yields/pools'));
+}
+
+// ── Hacks & Exploits ──
+
+export interface HackEvent {
+  name: string;
+  date: string;
+  amount: number;
+  classification: string;
+  technique: string;
+  chain: string[];
+  bridgeHack: boolean;
+  target: string;
+  source: string;
+  returnedFunds: number | null;
+  defillamaId: string | null;
+}
+
+export async function fetchHacks(): Promise<HackEvent[]> {
+  return fetchJson<HackEvent[]>(proUrl('/api/hacks'));
+}
+
+// ── Funding Rounds ──
+
+export interface FundingRound {
+  name: string;
+  date: string;
+  amount: number;
+  round: string;
+  sector: string;
+  category: string;
+  leadInvestors: string[];
+  otherInvestors: string[];
+  valuation: number | null;
+  chains: string[];
+  defillamaId: string | null;
+  source: string[];
+}
+
+export async function fetchRaises(): Promise<FundingRound[]> {
+  return fetchJson<FundingRound[]>(proUrl('/api/raises'));
+}
+
+// ── Historical Token Liquidity ──
+
+export interface LiquidityDataPoint {
+  date: number;
+  liquidityUSD: number;
+  volume24h: number;
+  priceImpact2pct: number;
+}
+
+export async function fetchHistoricalLiquidity(token: string): Promise<LiquidityDataPoint[]> {
+  return fetchJson<LiquidityDataPoint[]>(proUrl(`/api/historicalLiquidity/${token}`));
+}
+
+// ═══════════════════════════════════════════════════════════
+// BATCH FETCH HELPERS
+// ═══════════════════════════════════════════════════════════
 
 async function fetchPriceChartBatch(
   geckoIds: string[],
@@ -167,15 +355,13 @@ export async function fetchMultiplePriceCharts(
 ): Promise<Record<string, { timestamp: number; price: number }[]>> {
   const results: Record<string, { timestamp: number; price: number }[]> = {};
   const batchSize = 5;
-  const concurrency = 4; // Run 4 batches in parallel at a time
+  const concurrency = 4;
 
-  // Create all batches
   const batches: string[][] = [];
   for (let i = 0; i < geckoIds.length; i += batchSize) {
     batches.push(geckoIds.slice(i, i + batchSize));
   }
 
-  // Process batches with limited concurrency
   for (let i = 0; i < batches.length; i += concurrency) {
     const concurrent = batches.slice(i, i + concurrency);
     const batchResults = await Promise.all(

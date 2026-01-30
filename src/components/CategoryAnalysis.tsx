@@ -49,27 +49,27 @@ export function CategoryAnalysis({ revenueByCategory, avgScoreByCategory }: Cate
           <h3 className="chart-title">30d Revenue by Category</h3>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={revenueData} margin={{ top: 10, right: 20, bottom: 60, left: 60 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
               <XAxis
                 dataKey="category"
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
                 angle={-45}
                 textAnchor="end"
                 height={80}
               />
               <YAxis
                 tickFormatter={fmt}
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
               />
               <Tooltip
                 formatter={(value) => [fmt(Number(value)), 'Revenue (30d)']}
-                contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
+                contentStyle={{ background: '#fff', border: '1px solid #ddd', color: '#333' }}
               />
-              <Bar dataKey="revenue" fill="#fff" radius={[2, 2, 0, 0]}>
+              <Bar dataKey="revenue" fill="#1a1a1a" radius={[2, 2, 0, 0]}>
                 {revenueData.map((_, i) => (
-                  <Cell key={i} fill={i % 2 === 0 ? '#fff' : '#888'} />
+                  <Cell key={i} fill={i % 2 === 0 ? '#1a1a1a' : '#888'} />
                 ))}
               </Bar>
             </BarChart>
@@ -80,26 +80,26 @@ export function CategoryAnalysis({ revenueByCategory, avgScoreByCategory }: Cate
           <h3 className="chart-title">Average Holder Rights Score by Category</h3>
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={scoreData} margin={{ top: 10, right: 20, bottom: 60, left: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
               <XAxis
                 dataKey="category"
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
                 angle={-45}
                 textAnchor="end"
                 height={80}
               />
               <YAxis
-                tick={{ fill: '#999', fontSize: 11 }}
-                stroke="#333"
+                tick={{ fill: '#888', fontSize: 11 }}
+                stroke="#ccc"
               />
               <Tooltip
                 formatter={(value) => [Number(value).toFixed(1), 'Avg Rights Score']}
-                contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
+                contentStyle={{ background: '#fff', border: '1px solid #ddd', color: '#333' }}
               />
-              <Bar dataKey="score" fill="#fff" radius={[2, 2, 0, 0]}>
+              <Bar dataKey="score" fill="#1a1a1a" radius={[2, 2, 0, 0]}>
                 {scoreData.map((_, i) => (
-                  <Cell key={i} fill={i % 2 === 0 ? '#fff' : '#888'} />
+                  <Cell key={i} fill={i % 2 === 0 ? '#1a1a1a' : '#888'} />
                 ))}
               </Bar>
             </BarChart>

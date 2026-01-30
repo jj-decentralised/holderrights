@@ -44,7 +44,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-export function HistoricChart({ title, data, color = '#fff' }: HistoricChartProps) {
+export function HistoricChart({ title, data, color = '#1a1a1a' }: HistoricChartProps) {
   if (!data.length) {
     return (
       <div className="chart-container">
@@ -72,22 +72,22 @@ export function HistoricChart({ title, data, color = '#fff' }: HistoricChartProp
         <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 25, left: 50 }}>
           <defs>
             <linearGradient id={`grad-${title.replace(/\s/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.15} />
+              <stop offset="0%" stopColor={color} stopOpacity={0.12} />
               <stop offset="100%" stopColor={color} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatDate}
-            tick={{ fill: '#666', fontSize: 11 }}
-            stroke="#333"
+            tick={{ fill: '#888', fontSize: 11 }}
+            stroke="#ccc"
             interval="preserveStartEnd"
           />
           <YAxis
             tickFormatter={formatPrice}
-            tick={{ fill: '#666', fontSize: 11 }}
-            stroke="#333"
+            tick={{ fill: '#888', fontSize: 11 }}
+            stroke="#ccc"
             domain={['auto', 'auto']}
           />
           <Tooltip content={<CustomTooltip />} />
@@ -128,16 +128,16 @@ export function RevenueChart({ title, data }: RevenueChartProps) {
         <AreaChart data={data} margin={{ top: 5, right: 20, bottom: 25, left: 50 }}>
           <defs>
             <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#fff" stopOpacity={0.2} />
-              <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+              <stop offset="0%" stopColor="#1a1a1a" stopOpacity={0.12} />
+              <stop offset="100%" stopColor="#1a1a1a" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
           <XAxis
             dataKey="date"
             tickFormatter={(ts) => formatDate(ts)}
-            tick={{ fill: '#666', fontSize: 11 }}
-            stroke="#333"
+            tick={{ fill: '#888', fontSize: 11 }}
+            stroke="#ccc"
             interval="preserveStartEnd"
           />
           <YAxis
@@ -146,18 +146,18 @@ export function RevenueChart({ title, data }: RevenueChartProps) {
               if (v >= 1e3) return `$${(v / 1e3).toFixed(0)}K`;
               return `$${v.toFixed(0)}`;
             }}
-            tick={{ fill: '#666', fontSize: 11 }}
-            stroke="#333"
+            tick={{ fill: '#888', fontSize: 11 }}
+            stroke="#ccc"
           />
           <Tooltip
             formatter={(value) => [`$${Number(value).toLocaleString()}`, 'Revenue']}
             labelFormatter={(ts) => formatDate(ts as number)}
-            contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
+            contentStyle={{ background: '#fff', border: '1px solid #ddd', color: '#333' }}
           />
           <Area
             type="monotone"
             dataKey="value"
-            stroke="#fff"
+            stroke="#1a1a1a"
             strokeWidth={1.5}
             fill="url(#revGrad)"
             dot={false}

@@ -18,15 +18,16 @@
 }
 
 .header-title h1 {
-  font-size: 32px;
+  font-size: 36px;
   letter-spacing: -0.03em;
   margin-bottom: 8px;
 }
 
 .subtitle {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 16px;
   max-width: 640px;
+  font-style: italic;
 }
 
 .header-stats {
@@ -44,7 +45,7 @@
 }
 
 .stat-label {
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
@@ -52,29 +53,30 @@
 }
 
 .stat-value {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
-  color: var(--white);
+  color: var(--black);
 }
 
 .data-source {
   margin-top: 16px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-dim);
 }
 
 /* ── Section Titles ── */
 
 .section-title {
-  font-size: 22px;
+  font-size: 24px;
   margin-bottom: 8px;
 }
 
 .section-desc {
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 15px;
   margin-bottom: 24px;
   max-width: 720px;
+  font-style: italic;
 }
 
 /* ── Chart Grid ── */
@@ -101,7 +103,7 @@
 }
 
 .chart-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   margin-bottom: 4px;
   display: flex;
@@ -110,16 +112,16 @@
 }
 
 .chart-meta {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-dim);
   margin-bottom: 16px;
-  font-family: inherit;
+  font-style: italic;
 }
 
 .chart-current-price {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
-  color: var(--white);
+  color: var(--black);
   margin-bottom: 12px;
 }
 
@@ -129,45 +131,47 @@
   align-items: center;
   justify-content: center;
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: 14px;
+  font-style: italic;
 }
 
 .price-change {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
 .price-change.positive {
-  color: #ccc;
+  color: #2a7d3f;
 }
 
 .price-change.negative {
-  color: #666;
+  color: #b33;
 }
 
 /* ── Tooltips ── */
 
 .scatter-tooltip,
 .chart-tooltip {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
+  background: var(--tooltip-bg);
+  border: 1px solid var(--tooltip-border);
   padding: 10px 14px;
-  font-size: 12px;
-  color: var(--text);
+  font-size: 13px;
+  color: var(--tooltip-text);
   border-radius: 4px;
   max-width: 280px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .tooltip-name {
   font-weight: 600;
-  color: var(--white);
+  color: var(--black);
   margin-bottom: 4px;
 }
 
 .tooltip-price {
   font-weight: 600;
-  color: var(--white);
-  font-size: 16px;
+  color: var(--black);
+  font-size: 18px;
 }
 
 /* ── Protocol Table ── */
@@ -184,7 +188,7 @@
 }
 
 .table-controls label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   display: flex;
   align-items: center;
@@ -192,7 +196,7 @@
 }
 
 .table-count {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-dim);
   margin-left: auto;
 }
@@ -206,11 +210,11 @@
 .protocol-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .protocol-table thead {
-  background: var(--bg-surface);
+  background: var(--bg-raised);
   position: sticky;
   top: 0;
 }
@@ -229,7 +233,7 @@
 }
 
 .protocol-table th:hover {
-  color: var(--white);
+  color: var(--black);
 }
 
 .protocol-table td {
@@ -252,20 +256,20 @@
   align-items: center;
   gap: 8px;
   font-weight: 500;
-  color: var(--white);
+  color: var(--black);
 }
 
 .protocol-logo {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--bg);
+  background: var(--bg-raised);
 }
 
 .symbol {
   color: var(--text-dim);
   font-weight: 400;
-  font-size: 12px;
+  font-size: 13px;
   margin-left: 4px;
 }
 
@@ -279,7 +283,7 @@
   padding: 2px 8px;
   border: 1px solid var(--border);
   border-radius: 3px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
@@ -298,9 +302,9 @@
   padding: 1px 6px;
   border: 1px solid var(--border);
   border-radius: 2px;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
-  background: var(--bg);
+  background: var(--bg-raised);
 }
 
 /* ── Score Bar ── */
@@ -314,16 +318,16 @@
 
 .score-bar {
   height: 6px;
-  background: var(--white);
+  background: var(--black);
   border-radius: 3px;
   flex: 1;
   max-width: 80px;
 }
 
 .score-value {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--white);
+  color: var(--black);
   min-width: 20px;
   text-align: right;
 }
@@ -334,6 +338,7 @@
   position: fixed;
   inset: 0;
   background: var(--bg-overlay);
+  backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
   justify-content: center;
@@ -343,13 +348,14 @@
 }
 
 .detail-panel {
-  background: var(--bg);
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 6px;
   max-width: 900px;
   width: 100%;
   padding: 32px;
   position: relative;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
 }
 
 .close-btn {
@@ -369,7 +375,7 @@
 }
 
 .close-btn:hover {
-  color: var(--white);
+  color: var(--black);
   border-color: var(--border-hover);
 }
 
@@ -387,7 +393,7 @@
 }
 
 .detail-header h2 {
-  font-size: 22px;
+  font-size: 24px;
   margin-bottom: 4px;
 }
 
@@ -399,7 +405,7 @@
 }
 
 .detail-stat {
-  background: var(--bg-surface);
+  background: var(--bg-raised);
   border: 1px solid var(--border);
   padding: 12px 16px;
   border-radius: 4px;
@@ -410,7 +416,7 @@
 }
 
 .detail-rights h3 {
-  font-size: 16px;
+  font-size: 18px;
   margin-bottom: 16px;
 }
 
@@ -424,11 +430,11 @@
 .rights-score-number {
   font-size: 36px;
   font-weight: 700;
-  color: var(--white);
+  color: var(--black);
 }
 
 .rights-score-label {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -442,7 +448,7 @@
 }
 
 .right-detail {
-  background: var(--bg-surface);
+  background: var(--bg-raised);
   border: 1px solid var(--border);
   padding: 12px;
   border-radius: 4px;
@@ -450,24 +456,24 @@
 
 .right-name {
   font-weight: 600;
-  color: var(--white);
-  font-size: 13px;
+  color: var(--black);
+  font-size: 14px;
   margin-bottom: 2px;
 }
 
 .right-weight {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--text-dim);
   margin-bottom: 4px;
 }
 
 .right-desc {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
 .rights-notes {
-  background: var(--bg-surface);
+  background: var(--bg-raised);
   border: 1px solid var(--border);
   padding: 16px;
   border-radius: 4px;
@@ -475,7 +481,7 @@
 }
 
 .rights-notes h4 {
-  font-size: 12px;
+  font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
@@ -483,7 +489,7 @@
 }
 
 .rights-notes p {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
   line-height: 1.6;
 }
@@ -496,7 +502,7 @@
 /* ── Category Analysis ── */
 
 .category-section h2 {
-  font-size: 22px;
+  font-size: 24px;
   margin-bottom: 8px;
 }
 
@@ -519,13 +525,13 @@
 }
 
 .methodology-block h3 {
-  font-size: 15px;
+  font-size: 17px;
   margin-bottom: 12px;
 }
 
 .methodology-block p,
 .methodology-block li {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   line-height: 1.7;
 }
@@ -542,7 +548,7 @@
 }
 
 .methodology-block li::before {
-  content: '—';
+  content: '\2014';
   position: absolute;
   left: 0;
   color: var(--text-dim);
@@ -556,7 +562,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-top: 12px;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .methodology-table th {
@@ -590,7 +596,7 @@
   width: 32px;
   height: 32px;
   border: 2px solid var(--border);
-  border-top-color: var(--white);
+  border-top-color: var(--black);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -600,14 +606,15 @@
 }
 
 .loading-text {
-  color: var(--white);
-  font-size: 16px;
+  color: var(--black);
+  font-size: 18px;
   font-weight: 500;
 }
 
 .loading-subtext {
   color: var(--text-dim);
-  font-size: 13px;
+  font-size: 14px;
+  font-style: italic;
 }
 
 /* ── Error ── */
@@ -622,7 +629,7 @@
 }
 
 .error-screen h2 {
-  font-size: 20px;
+  font-size: 22px;
 }
 
 .error-screen p {
@@ -631,8 +638,8 @@
 
 .error-screen button {
   margin-top: 12px;
-  background: var(--white);
-  color: var(--bg);
+  background: var(--black);
+  color: #fff;
   border: none;
   padding: 8px 20px;
   border-radius: 4px;
@@ -649,8 +656,9 @@
 }
 
 .footer p {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-dim);
+  font-style: italic;
 }
 
 /* ── Category Summary Table ── */
@@ -664,11 +672,11 @@
 .category-summary-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .category-summary-table thead {
-  background: var(--bg-surface);
+  background: var(--bg-raised);
   position: sticky;
   top: 0;
 }
@@ -692,7 +700,7 @@
 
 .cat-name-cell {
   font-weight: 500;
-  color: var(--white);
+  color: var(--black);
 }
 
 /* ── Rights Breakdown ── */
@@ -720,8 +728,8 @@
 
 .rights-stat-label {
   font-weight: 600;
-  color: var(--white);
-  font-size: 13px;
+  color: var(--black);
+  font-size: 14px;
 }
 
 .rights-stat-weight {
@@ -734,7 +742,7 @@
 .rights-stat-count {
   font-size: 28px;
   font-weight: 700;
-  color: var(--white);
+  color: var(--black);
   margin-bottom: 8px;
 }
 
@@ -745,7 +753,7 @@
 }
 
 .rights-stat-details {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   line-height: 1.7;
 }
@@ -753,14 +761,14 @@
 /* ── Aggregate Charts ── */
 
 .aggregate-charts-section h2 {
-  font-size: 22px;
+  font-size: 24px;
   margin-bottom: 8px;
 }
 
 /* ── Deep Dive ── */
 
 .deep-dive-section h2 {
-  font-size: 22px;
+  font-size: 24px;
   margin-bottom: 8px;
 }
 

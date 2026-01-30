@@ -90,30 +90,30 @@ export function ScatterPlotChart({ data, xKey, yKey, title, yLabel, yFormatter }
       </div>
       <ResponsiveContainer width="100%" height={400}>
         <ScatterChart margin={{ top: 10, right: 30, bottom: 40, left: 60 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e8e8e5" />
           <XAxis
             type="number"
             dataKey={xKey}
             domain={[0, 'auto']}
-            tick={{ fill: '#999', fontSize: 12 }}
-            stroke="#555"
+            tick={{ fill: '#888', fontSize: 12 }}
+            stroke="#ccc"
           >
-            <Label value="Holder Rights Score" offset={-20} position="insideBottom" fill="#999" />
+            <Label value="Holder Rights Score" offset={-20} position="insideBottom" fill="#888" />
           </XAxis>
           <YAxis
             type="number"
             dataKey={yKey}
             tickFormatter={(v) => formatter(v)}
-            tick={{ fill: '#999', fontSize: 12 }}
-            stroke="#555"
+            tick={{ fill: '#888', fontSize: 12 }}
+            stroke="#ccc"
           >
-            <Label value={yLabel} angle={-90} position="insideLeft" fill="#999" style={{ textAnchor: 'middle' }} />
+            <Label value={yLabel} angle={-90} position="insideLeft" fill="#888" style={{ textAnchor: 'middle' }} />
           </YAxis>
           <Tooltip content={<CustomTooltip />} />
           <Scatter
             data={filtered}
-            fill="#fff"
-            stroke="#fff"
+            fill="#1a1a1a"
+            stroke="#1a1a1a"
             strokeWidth={1}
             r={5}
           />
