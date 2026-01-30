@@ -50,15 +50,27 @@ function scoreBar(score: number) {
   );
 }
 
+type DataFilter = 'all' | 'classified' | 'with-revenue' | 'with-fees';
+
 export function ProtocolTable({ protocols, onSelect, hasProData }: ProtocolTableProps) {
-  const [sortKey, setSortKey] = useState<SortKey>('holderRightsScore');
+  const [sortKey, setSortKey] = useState<SortKey>('tvl');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [dataFilter, setDataFilter] = useState<DataFilter>('all');
 
-  const categories = ['all', ...new Set(protocols.map((p) => p.category))];
+  const categories = ['all', ...new Set(protocols.map((p) => p.category).filter(Boolean).sort())];
+
+  const classifiedCount = protocols.filter((p) => p.isClassified).length;
+  const totalCount = protocols.length;
 
   const sorted = [...protocols]
-    .filter((p) => categoryFilter === 'all' || p.category === categoryFilter)
+    .filter((p) => {
+      if (categoryFilter !== 'all' && p.category !== categoryFilter) return false;
+      if (dataFilter === 'classified' && !p.isClassified) return false;
+      if (dataFilter === 'with-revenue' && !p.revenue30d) return false;
+      if (dataFilter === 'with-fees' && !p.fees30d) return false;
+      return true;
+    })
     .sort((a, b) => {
       let aVal: number | string = 0;
       let bVal: number | string = 0;
@@ -92,13 +104,23 @@ export function ProtocolTable({ protocols, onSelect, hasProData }: ProtocolTable
 
   return (
     <div className="table-section">
-      <h2 className="section-title">Protocol Holder Rights Comparison</h2>
+      <h2 className="section-title">Protocol Data Explorer</h2>
       <p className="section-desc">
-        Each protocol is classified by the rights its token grants holders. Click a protocol to view detailed charts.
-        {hasProData && ' Treasury, funding, and hack data sourced from DeFi Llama Pro API.'}
+        {classifiedCount} protocols have manual holder rights classifications. All {totalCount} protocols shown
+        include financial data from DeFi Llama. Click a protocol to view detailed charts.
+        {hasProData && ' Treasury, funding, emissions, and hack data sourced from DeFi Llama Pro API.'}
       </p>
 
       <div className="table-controls">
+        <label>
+          Show:
+          <select value={dataFilter} onChange={(e) => setDataFilter(e.target.value as DataFilter)}>
+            <option value="all">All Protocols ({totalCount})</option>
+            <option value="classified">Classified Only ({classifiedCount})</option>
+            <option value="with-revenue">With Revenue</option>
+            <option value="with-fees">With Fees</option>
+          </select>
+        </label>
         <label>
           Category:
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
@@ -148,7 +170,10 @@ export function ProtocolTable({ protocols, onSelect, hasProData }: ProtocolTable
                 <td><span className="category-badge">{p.category}</span></td>
                 <td>{scoreBar(p.holderRightsScore)}</td>
                 <td className="rights-cell">
-                  {p.holderRights.map((r) => rightsBadge(r))}
+                  {p.isClassified
+                    ? p.holderRights.map((r) => rightsBadge(r))
+                    : <span className="unclassified-badge">Unclassified</span>
+                  }
                 </td>
                 <td className="num-cell">{fmt(p.tvl)}</td>
                 <td className="num-cell">{fmt(p.mcap)}</td>

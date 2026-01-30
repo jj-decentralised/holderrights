@@ -170,6 +170,7 @@ export interface EnrichedProtocol {
   holderRights: HolderRight[];
   holderRightsScore: number;
   holderRightsNotes: string;
+  isClassified: boolean; // whether this protocol has manual holder rights classification
   priceHistory: { timestamp: number; price: number }[];
   revenueHistory: [number, number][];
   mcapToRevenue: number | null;
@@ -212,6 +213,10 @@ export interface EnrichedProtocol {
   // Derivatives & options volumes (free API)
   derivativesVolume24h: number | null;
   optionsVolume24h: number | null;
+  // Emissions data (pro API)
+  hasEmissions: boolean;
+  upcomingUnlockCount: number;
+  nextUnlockDate: string | null;
 }
 
 export interface CorrelationPoint {

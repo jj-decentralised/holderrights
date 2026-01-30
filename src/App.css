@@ -504,6 +504,29 @@
   background: var(--bg-raised);
 }
 
+/* ── Unclassified protocols ── */
+
+.unclassified-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px dashed var(--border);
+  border-radius: 2px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.unclassified-notice {
+  background: var(--bg-raised);
+  border: 1px dashed var(--border);
+  padding: 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.6;
+}
+
 .detail-rights {
   margin-bottom: 32px;
 }

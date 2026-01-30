@@ -306,29 +306,61 @@ export function ProtocolDetail({ protocol, revenueHistory, onClose }: ProtocolDe
           </div>
         )}
 
-        <div className="detail-rights">
-          <h3>Holder Rights Analysis</h3>
-          <div className="rights-score-display">
-            <div className="rights-score-number">{p.holderRightsScore}</div>
-            <div className="rights-score-label">Rights Score</div>
-          </div>
-          <div className="rights-list">
-            {p.holderRights.map((r) => {
-              const def = HOLDER_RIGHT_DEFINITIONS[r];
-              return (
-                <div key={r} className="right-detail">
-                  <div className="right-name">{def.label}</div>
-                  <div className="right-weight">Weight: {def.weight}/10</div>
-                  <div className="right-desc">{def.description}</div>
+        {/* Token Emissions / Unlocks */}
+        {p.hasEmissions && (
+          <div className="detail-section">
+            <h3>Token Emissions</h3>
+            <div className="detail-stats">
+              <div className="detail-stat">
+                <div className="stat-label">Upcoming Unlocks</div>
+                <div className="stat-value">{p.upcomingUnlockCount}</div>
+              </div>
+              {p.nextUnlockDate && (
+                <div className="detail-stat">
+                  <div className="stat-label">Next Unlock</div>
+                  <div className="stat-value">{new Date(p.nextUnlockDate).toLocaleDateString()}</div>
                 </div>
-              );
-            })}
+              )}
+            </div>
           </div>
-          <div className="rights-notes">
-            <h4>Notes</h4>
-            <p>{p.holderRightsNotes}</p>
+        )}
+
+        {/* Holder Rights Analysis — only for classified protocols */}
+        {p.isClassified ? (
+          <div className="detail-rights">
+            <h3>Holder Rights Analysis</h3>
+            <div className="rights-score-display">
+              <div className="rights-score-number">{p.holderRightsScore}</div>
+              <div className="rights-score-label">Rights Score</div>
+            </div>
+            <div className="rights-list">
+              {p.holderRights.map((r) => {
+                const def = HOLDER_RIGHT_DEFINITIONS[r];
+                return (
+                  <div key={r} className="right-detail">
+                    <div className="right-name">{def.label}</div>
+                    <div className="right-weight">Weight: {def.weight}/10</div>
+                    <div className="right-desc">{def.description}</div>
+                  </div>
+                );
+              })}
+            </div>
+            {p.holderRightsNotes && (
+              <div className="rights-notes">
+                <h4>Notes</h4>
+                <p>{p.holderRightsNotes}</p>
+              </div>
+            )}
           </div>
-        </div>
+        ) : (
+          <div className="detail-rights">
+            <h3>Holder Rights</h3>
+            <div className="unclassified-notice">
+              This protocol has not yet been classified for holder rights.
+              Financial data is sourced from DeFi Llama.
+            </div>
+          </div>
+        )}
 
         <div className="detail-charts">
           <HistoricChart

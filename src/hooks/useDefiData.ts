@@ -14,13 +14,17 @@ import {
   fetchHacks,
   fetchRaises,
   fetchYieldPools,
+  fetchAllEmissions,
   setApiKey,
   hasApiKey,
 } from '../services/defiLlama';
-import type { LlamaProtocol, ProtocolFees, DexProtocol, DerivativesProtocol, TreasuryProtocol, HackEvent, FundingRound, YieldPool } from '../services/defiLlama';
+import type { LlamaProtocol, ProtocolFees, DexProtocol, DerivativesProtocol, TreasuryProtocol, HackEvent, FundingRound, YieldPool, ProtocolEmissions } from '../services/defiLlama';
 import { PROTOCOL_CLASSIFICATIONS } from '../data/protocolClassifications';
 import { HolderRight, HOLDER_RIGHT_DEFINITIONS } from '../types';
 import type { EnrichedProtocol, CorrelationPoint, HolderRight as HolderRightType } from '../types';
+
+// Minimum TVL threshold for including unclassified protocols
+const MIN_TVL_FOR_INCLUSION = 1_000_000; // $1M
 
 // ── Per-category stats ──
 
@@ -166,19 +170,22 @@ export function useDefiData(): DashboardData {
         let hackData: HackEvent[] = [];
         let raisesData: FundingRound[] = [];
         let yieldData: YieldPool[] = [];
+        let emissionsData: ProtocolEmissions[] = [];
 
         if (hasApiKey()) {
-          const [tres, hacks, raises, yields] = await Promise.all([
+          const [tres, hacks, raises, yields, emissions] = await Promise.all([
             fetchTreasuries().catch(() => [] as TreasuryProtocol[]),
             fetchHacks().catch(() => [] as HackEvent[]),
             fetchRaises().catch(() => [] as FundingRound[]),
             fetchYieldPools().then(r => r?.data || []).catch(() => [] as YieldPool[]),
+            fetchAllEmissions().catch(() => [] as ProtocolEmissions[]),
           ]);
           // Guard against non-array responses from pro API
           treasuryData = Array.isArray(tres) ? tres : [];
           hackData = Array.isArray(hacks) ? hacks : [];
           raisesData = Array.isArray(raises) ? raises : [];
           yieldData = Array.isArray(yields) ? yields : [];
+          emissionsData = Array.isArray(emissions) ? emissions : [];
 
           if (treasuryData.length > 0 || hackData.length > 0 || raisesData.length > 0) {
             setHasProData(true);
@@ -260,18 +267,80 @@ export function useDefiData(): DashboardData {
           yieldsByProject[key].push(y);
         });
 
-        // ── Fetch price charts ──
-        const geckoIds = PROTOCOL_CLASSIFICATIONS
-          .map((c) => c.geckoId)
-          .filter(Boolean);
+        // Emissions by gecko ID and normalized name
+        const emissionsByGecko: Record<string, ProtocolEmissions> = {};
+        const emissionsByName: Record<string, ProtocolEmissions> = {};
+        emissionsData.forEach((e) => {
+          if (e.geckoId) emissionsByGecko[e.geckoId] = e;
+          if (e.name) emissionsByName[normalizeName(e.name)] = e;
+        });
 
-        const priceCharts = await fetchMultiplePriceCharts(geckoIds);
+        // ── Build set of classified slugs for quick lookup ──
+        const classifiedBySlug: Record<string, typeof PROTOCOL_CLASSIFICATIONS[0]> = {};
+        for (const c of PROTOCOL_CLASSIFICATIONS) {
+          classifiedBySlug[c.slug] = c;
+        }
 
-        // ── Fetch multi-period price percentage changes ──
+        // ── Determine which protocols to include ──
+        // Include: all classified + any API protocol with revenue/fees OR TVL > $1M
+        const slugsToInclude = new Set<string>();
+        for (const c of PROTOCOL_CLASSIFICATIONS) {
+          slugsToInclude.add(c.slug);
+        }
+        // Add all protocols with revenue data
+        Object.keys(revenueBySlug).forEach((slug) => slugsToInclude.add(slug));
+        // Add all protocols with fee data
+        Object.keys(feesBySlug).forEach((slug) => slugsToInclude.add(slug));
+        // Add all protocols with DEX volume
+        Object.keys(dexBySlug).forEach((slug) => slugsToInclude.add(slug));
+        // Add all derivatives protocols
+        Object.keys(derivsBySlug).forEach((slug) => slugsToInclude.add(slug));
+        // Add all options protocols
+        Object.keys(optionsBySlug).forEach((slug) => slugsToInclude.add(slug));
+        // Add protocols with TVL > threshold from main API
+        if (Array.isArray(allProtocols)) {
+          allProtocols.forEach((p) => {
+            if (p.tvl >= MIN_TVL_FOR_INCLUSION) {
+              slugsToInclude.add(p.slug);
+            }
+          });
+        }
+
+        // ── Collect all gecko IDs for price data ──
+        const allGeckoIds = new Set<string>();
+        for (const slug of slugsToInclude) {
+          const classified = classifiedBySlug[slug];
+          if (classified?.geckoId) {
+            allGeckoIds.add(classified.geckoId);
+          } else {
+            const proto = protocolsBySlug[slug];
+            if (proto?.gecko_id) {
+              allGeckoIds.add(proto.gecko_id);
+            }
+          }
+        }
+        const geckoIdArray = Array.from(allGeckoIds).filter(Boolean);
+
+        // ── Fetch price charts (for classified + top unclassified by TVL) ──
+        // Price charts are expensive; limit to top 200 by TVL
+        const topGeckoIdsForCharts = Array.from(slugsToInclude)
+          .map((slug) => {
+            const proto = protocolsBySlug[slug];
+            const classified = classifiedBySlug[slug];
+            const geckoId = classified?.geckoId || proto?.gecko_id || '';
+            return { slug, geckoId, tvl: proto?.tvl || 0 };
+          })
+          .filter((x) => x.geckoId)
+          .sort((a, b) => b.tvl - a.tvl)
+          .slice(0, 200)
+          .map((x) => x.geckoId);
+
+        const priceCharts = await fetchMultiplePriceCharts(topGeckoIdsForCharts);
+
+        // ── Fetch multi-period price percentage changes (for ALL protocols) ──
         let priceChanges: Record<string, Record<string, number>> = {};
         try {
-          const coins = geckoIds.map((id) => `coingecko:${id}`);
-          // Fetch in batches of 25 to avoid URL length limits
+          const coins = geckoIdArray.map((id) => `coingecko:${id}`);
           const changeBatchSize = 25;
           for (let i = 0; i < coins.length; i += changeBatchSize) {
             const batch = coins.slice(i, i + changeBatchSize);
@@ -284,32 +353,41 @@ export function useDefiData(): DashboardData {
           // Price changes are supplementary — continue without them
         }
 
-        // ── Build enriched protocols ──
+        // ── Build enriched protocols for ALL included slugs ──
         const enriched: EnrichedProtocol[] = [];
 
-        for (const classification of PROTOCOL_CLASSIFICATIONS) {
-          const proto = protocolsBySlug[classification.slug];
-          const revenue = revenueBySlug[classification.slug];
-          const fees = feesBySlug[classification.slug];
-          const priceHistory = priceCharts[classification.geckoId] || [];
-          const dex = dexBySlug[classification.slug];
+        for (const slug of slugsToInclude) {
+          const classification = classifiedBySlug[slug];
+          const proto = protocolsBySlug[slug];
+          const revenue = revenueBySlug[slug];
+          const fees = feesBySlug[slug];
+          const dex = dexBySlug[slug];
+          const deriv = derivsBySlug[slug];
+          const option = optionsBySlug[slug];
+
+          // Determine core identity fields
+          const name = classification?.name || proto?.name || slug;
+          const symbol = classification?.symbol || proto?.symbol || '';
+          const category = classification?.category || proto?.category || '';
+          const geckoId = classification?.geckoId || proto?.gecko_id || '';
+          const logo = proto?.logo || '';
+
+          const priceHistory = priceCharts[geckoId] || [];
 
           const tvl = proto?.tvl || 0;
           const mcap = proto?.mcap || null;
           const revenue30d = revenue?.total30d || null;
-          const deriv = derivsBySlug[classification.slug];
-          const option = optionsBySlug[classification.slug];
 
           // Price change data
-          const coinKey = `coingecko:${classification.geckoId}`;
+          const coinKey = `coingecko:${geckoId}`;
           const pctData = priceChanges[coinKey];
           const priceChange1d = pctData?.['1d'] ?? null;
           const priceChange7d = pctData?.['7d'] ?? null;
           const priceChange30d = pctData?.['30d'] ?? null;
 
           // Match treasury data
-          const normalName = normalizeName(classification.name);
-          const treasury = treasuryBySlug[classification.slug] || treasuryByName[normalName] || null;
+          const normalName = normalizeName(name);
+          const treasury = treasuryBySlug[slug] || treasuryByName[normalName] || null;
 
           // Match hack data
           const hacks = hacksByName[normalName] || [];
@@ -326,18 +404,27 @@ export function useDefiData(): DashboardData {
             : null;
 
           // Match yield data
-          const pools = yieldsByProject[classification.slug] || yieldsByProject[normalName] || [];
+          const pools = yieldsByProject[slug] || yieldsByProject[normalName] || [];
           const poolApys = pools.filter(p => p.apy > 0 && p.apy < 10000).map(p => p.apy);
           const topApy = poolApys.length > 0 ? Math.max(...poolApys) : null;
           const avgApy = poolApys.length > 0 ? poolApys.reduce((s, v) => s + v, 0) / poolApys.length : null;
 
+          // Match emissions data
+          const emission = emissionsByGecko[geckoId] || emissionsByName[normalName] || null;
+          const futureUnlocks = emission?.futures?.filter((f) => f.timestamp > Date.now() / 1000) || [];
+          const nextUnlock = futureUnlocks.length > 0
+            ? futureUnlocks.sort((a, b) => a.timestamp - b.timestamp)[0]
+            : null;
+
+          const isClassified = !!classification;
+
           enriched.push({
-            slug: classification.slug,
-            name: classification.name,
-            symbol: classification.symbol,
-            category: classification.category,
-            geckoId: classification.geckoId,
-            logo: proto?.logo || '',
+            slug,
+            name,
+            symbol,
+            category,
+            geckoId,
+            logo,
             tvl,
             mcap,
             revenue24h: revenue?.total24h || null,
@@ -346,9 +433,10 @@ export function useDefiData(): DashboardData {
             revenueAllTime: revenue?.totalAllTime || null,
             fees24h: fees?.total24h || null,
             fees30d: fees?.total30d || null,
-            holderRights: classification.holderRights,
-            holderRightsScore: classification.holderRightsScore,
-            holderRightsNotes: classification.holderRightsNotes,
+            holderRights: classification?.holderRights || [],
+            holderRightsScore: classification?.holderRightsScore || 0,
+            holderRightsNotes: classification?.holderRightsNotes || '',
+            isClassified,
             priceHistory,
             revenueHistory: [],
             mcapToRevenue: mcap && revenue30d ? mcap / (revenue30d * 12) : null,
@@ -391,17 +479,20 @@ export function useDefiData(): DashboardData {
             // Derivatives & options
             derivativesVolume24h: deriv?.total24h ?? null,
             optionsVolume24h: option?.total24h ?? null,
+            // Emissions
+            hasEmissions: !!emission,
+            upcomingUnlockCount: futureUnlocks.length,
+            nextUnlockDate: nextUnlock?.date || null,
           });
         }
 
         enriched.sort((a, b) => b.tvl - a.tvl);
         setProtocols(enriched);
 
-        // Build correlation points
+        // Build correlation points (classified protocols only for scatter analysis)
         const points: CorrelationPoint[] = enriched
-          .filter((p) => p.mcap && p.revenue30d)
+          .filter((p) => p.isClassified && p.mcap && p.revenue30d)
           .map((p) => {
-            // Use API-sourced price change if available, fallback to chart computation
             let pc30d: number | null = p.priceChange30d;
             if (pc30d === null && p.priceHistory.length >= 2) {
               const recent = p.priceHistory[p.priceHistory.length - 1].price;
