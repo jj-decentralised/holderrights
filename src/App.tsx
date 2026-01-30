@@ -20,12 +20,26 @@ import { FundingLandscape } from './components/FundingLandscape';
 import { ChainDominance } from './components/ChainDominance';
 import { YieldLandscape } from './components/YieldLandscape';
 import { EmissionsAnalysis } from './components/EmissionsAnalysis';
+import { ValuationAnalysis } from './components/ValuationAnalysis';
+import { TreasuryHealth } from './components/TreasuryHealth';
+import { MomentumScanner } from './components/MomentumScanner';
+import { RiskReturn } from './components/RiskReturn';
+import { FundingPerformance } from './components/FundingPerformance';
+import { GovernanceQuality } from './components/GovernanceQuality';
 import './App.css';
 
-type Tab = 'dashboard' | 'analytics';
+type Tab = 'overview' | 'protocols' | 'chains' | 'risk' | 'governance';
+
+const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: 'overview', label: 'Market Overview', icon: '\u25C8' },
+  { key: 'protocols', label: 'Protocol Intelligence', icon: '\u25A0' },
+  { key: 'chains', label: 'Chain & Ecosystem', icon: '\u25CB' },
+  { key: 'risk', label: 'Risk & Opportunity', icon: '\u25B2' },
+  { key: 'governance', label: 'Governance & Rights', icon: '\u2606' },
+];
 
 function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   const {
     protocols,
@@ -86,24 +100,22 @@ function App() {
 
       {/* Tab Navigation */}
       <nav className="tab-nav">
-        <button
-          className={`tab-btn ${activeTab === 'dashboard' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('dashboard')}
-        >
-          Market Dashboard
-        </button>
-        <button
-          className={`tab-btn ${activeTab === 'analytics' ? 'tab-active' : ''}`}
-          onClick={() => setActiveTab('analytics')}
-        >
-          Deep Analytics
-        </button>
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            className={`tab-btn ${activeTab === tab.key ? 'tab-active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            <span className="tab-icon">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
       </nav>
 
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* TAB 1: MARKET DASHBOARD                                */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      {activeTab === 'dashboard' && (
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* TAB 1: MARKET OVERVIEW                                     */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {activeTab === 'overview' && (
         <>
           {/* Market Pulse — hourly monitoring */}
           <section className="section">
@@ -141,7 +153,14 @@ function App() {
               <MarketStructure analytics={analytics} />
             </section>
           )}
+        </>
+      )}
 
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* TAB 2: PROTOCOL INTELLIGENCE                               */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {activeTab === 'protocols' && (
+        <>
           {/* Revenue Efficiency */}
           {analytics && (
             <section className="section">
@@ -156,6 +175,37 @@ function App() {
             </section>
           )}
 
+          {/* Valuation Analysis */}
+          {analytics && (
+            <section className="section">
+              <ValuationAnalysis analytics={analytics} />
+            </section>
+          )}
+
+          {/* Treasury Health */}
+          {analytics && (
+            <section className="section">
+              <TreasuryHealth analytics={analytics} protocols={protocols} />
+            </section>
+          )}
+
+          {/* Momentum Scanner */}
+          <section className="section">
+            <MomentumScanner protocols={protocols} />
+          </section>
+
+          {/* Protocol Table */}
+          <section className="section">
+            <ProtocolTable protocols={protocols} onSelect={selectProtocol} hasProData={hasProData} />
+          </section>
+        </>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* TAB 3: CHAIN & ECOSYSTEM                                   */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {activeTab === 'chains' && (
+        <>
           {/* Chain Dominance */}
           {analytics && (
             <section className="section">
@@ -163,7 +213,97 @@ function App() {
             </section>
           )}
 
-          {/* Scatter Plots */}
+          {/* Featured Price Charts */}
+          {featured.length > 0 && (
+            <section className="section">
+              <h2 className="section-title">Price History — Top DeFi Tokens</h2>
+              <p className="section-desc">
+                Historic price performance for the largest DeFi tokens by market cap. Click any protocol in the table below
+                to see its individual charts.
+              </p>
+              <div className="chart-grid">
+                {featured.map((p) => (
+                  <HistoricChart
+                    key={p.slug}
+                    title={`${p.name} (${p.symbol})`}
+                    data={p.priceHistory}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Category Analysis */}
+          <section className="section">
+            <CategoryAnalysis
+              revenueByCategory={revenueByCategory}
+              avgScoreByCategory={avgScoreByCategory}
+            />
+          </section>
+
+          {/* Category Deep Dive */}
+          <section className="section">
+            <CategoryDeepDive categoryStats={categoryStats} />
+          </section>
+        </>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* TAB 4: RISK & OPPORTUNITY                                  */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {activeTab === 'risk' && (
+        <>
+          {/* Security & Hack Analysis */}
+          {analytics && (
+            <section className="section">
+              <HackAnalysis analytics={analytics} />
+            </section>
+          )}
+
+          {/* Risk / Return */}
+          <section className="section">
+            <RiskReturn protocols={protocols} />
+          </section>
+
+          {/* Yield Landscape */}
+          {analytics && (
+            <section className="section">
+              <YieldLandscape analytics={analytics} />
+            </section>
+          )}
+
+          {/* Token Emissions */}
+          {analytics && (
+            <section className="section">
+              <EmissionsAnalysis analytics={analytics} />
+            </section>
+          )}
+
+          {/* Funding Landscape */}
+          {analytics && (
+            <section className="section">
+              <FundingLandscape analytics={analytics} />
+            </section>
+          )}
+
+          {/* Funding Performance */}
+          <section className="section">
+            <FundingPerformance protocols={protocols} />
+          </section>
+        </>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* TAB 5: GOVERNANCE & RIGHTS                                 */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {activeTab === 'governance' && (
+        <>
+          {/* Governance Quality */}
+          <section className="section">
+            <GovernanceQuality correlationPoints={correlationPoints} />
+          </section>
+
+          {/* Holder Rights vs Performance */}
           <section className="section">
             <h2 className="section-title">Holder Rights vs Performance</h2>
             <p className="section-desc">
@@ -206,85 +346,12 @@ function App() {
             </div>
           </section>
 
-          {/* Featured Price Charts */}
-          {featured.length > 0 && (
-            <section className="section">
-              <h2 className="section-title">Price History — Top DeFi Tokens</h2>
-              <p className="section-desc">
-                Historic price performance for the largest DeFi tokens by market cap. Click any protocol in the table below
-                to see its individual charts.
-              </p>
-              <div className="chart-grid">
-                {featured.map((p) => (
-                  <HistoricChart
-                    key={p.slug}
-                    title={`${p.name} (${p.symbol})`}
-                    data={p.priceHistory}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Protocol Table */}
-          <section className="section">
-            <ProtocolTable protocols={protocols} onSelect={selectProtocol} hasProData={hasProData} />
-          </section>
-        </>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* TAB 2: DEEP ANALYTICS                                  */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      {activeTab === 'analytics' && (
-        <>
-          {/* Security & Hack Analysis */}
-          {analytics && (
-            <section className="section">
-              <HackAnalysis analytics={analytics} />
-            </section>
-          )}
-
-          {/* Funding Landscape */}
-          {analytics && (
-            <section className="section">
-              <FundingLandscape analytics={analytics} />
-            </section>
-          )}
-
-          {/* Yield Landscape */}
-          {analytics && (
-            <section className="section">
-              <YieldLandscape analytics={analytics} />
-            </section>
-          )}
-
-          {/* Token Emissions */}
-          {analytics && (
-            <section className="section">
-              <EmissionsAnalysis analytics={analytics} />
-            </section>
-          )}
-
           {/* Holder Rights Distribution */}
           <section className="section">
             <RightsBreakdown
               rightTypeStats={rightTypeStats}
               totalProtocols={protocols.length}
             />
-          </section>
-
-          {/* Category Analysis */}
-          <section className="section">
-            <CategoryAnalysis
-              revenueByCategory={revenueByCategory}
-              avgScoreByCategory={avgScoreByCategory}
-            />
-          </section>
-
-          {/* Category Deep Dive */}
-          <section className="section">
-            <CategoryDeepDive categoryStats={categoryStats} />
           </section>
 
           {/* Methodology */}
