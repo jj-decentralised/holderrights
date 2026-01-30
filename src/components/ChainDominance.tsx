@@ -62,6 +62,7 @@ function getColor(chain: string): string {
 
 interface ChainHistoryData {
   chains: string[];
+  dates: number[];
   data: Record<string, { date: number; tvl: number }[]>;
 }
 
@@ -98,65 +99,54 @@ export function ChainDominance({ analytics }: Props) {
       .catch(() => setLoading(false));
   }, [view, chainHistory]);
 
-  // Build % share time series
+  // Build % share time series from pre-aligned weekly data
   const shareData = useMemo(() => {
-    if (!chainHistory) return [];
+    if (!chainHistory || !chainHistory.dates) return [];
 
-    const { chains, data: histData } = chainHistory;
+    const { chains, dates, data: histData } = chainHistory;
 
-    // Find all unique dates across all chains
-    const dateSet = new Set<number>();
-    for (const chain of chains) {
-      for (const pt of (histData[chain] || [])) {
-        dateSet.add(pt.date);
-      }
-    }
-    const allDates = Array.from(dateSet).sort((a, b) => a - b);
-
-    // Filter by period
-    let filteredDates = allDates;
+    // Filter dates by period
+    let filteredIndices: number[] = [];
     if (period === 'custom') {
       const fromTs = customFrom ? new Date(customFrom).getTime() / 1000 : 0;
       const toTs = customTo ? new Date(customTo).getTime() / 1000 : Infinity;
-      filteredDates = allDates.filter(d => d >= fromTs && d <= toTs);
+      filteredIndices = dates.map((_, i) => i).filter(i => dates[i] >= fromTs && dates[i] <= toTs);
     } else {
       const opt = PERIOD_OPTIONS.find(p => p.key === period);
-      if (opt && opt.days > 0 && allDates.length > 0) {
-        const cutoff = allDates[allDates.length - 1] - opt.days * 86400;
-        filteredDates = allDates.filter(d => d >= cutoff);
+      if (opt && opt.days > 0 && dates.length > 0) {
+        const cutoff = dates[dates.length - 1] - opt.days * 86400;
+        filteredIndices = dates.map((_, i) => i).filter(i => dates[i] >= cutoff);
+      } else {
+        filteredIndices = dates.map((_, i) => i);
       }
     }
 
-    // Build lookup maps for each chain
-    const chainLookups: Record<string, Map<number, number>> = {};
-    for (const chain of chains) {
-      const map = new Map<number, number>();
-      for (const pt of (histData[chain] || [])) {
-        map.set(pt.date, pt.tvl);
-      }
-      chainLookups[chain] = map;
-    }
-
-    // Build rows: for each date, compute total and % share for each chain
-    return filteredDates.map(date => {
+    // Build rows: all chains are aligned to the same date array
+    return filteredIndices.map(idx => {
+      const date = dates[idx];
       const row: Record<string, number> = { date };
+
+      // Sum total TVL across all chains at this index
       let total = 0;
       for (const chain of chains) {
-        const val = chainLookups[chain]?.get(date) || 0;
-        total += val;
+        const arr = histData[chain];
+        const tvl = arr && arr[idx] ? arr[idx].tvl : 0;
+        total += tvl;
       }
+
+      // Compute % share
       if (total > 0) {
+        let known = 0;
         for (const chain of chains) {
-          const val = chainLookups[chain]?.get(date) || 0;
-          row[chain] = (val / total) * 100;
+          const arr = histData[chain];
+          const tvl = arr && arr[idx] ? arr[idx].tvl : 0;
+          const share = (tvl / total) * 100;
+          row[chain] = share;
+          known += share;
         }
+        row['Others'] = Math.max(0, 100 - known);
       }
-      // Others = 100 - sum of known
-      let known = 0;
-      for (const chain of chains) {
-        known += row[chain] || 0;
-      }
-      row['Others'] = Math.max(0, 100 - known);
+
       return row;
     });
   }, [chainHistory, period, customFrom, customTo]);

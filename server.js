@@ -922,36 +922,61 @@ app.get('/api/chain-history', async (_req, res) => {
   try {
     const now = Date.now();
     const chains = TOP_CHAINS;
-    const results = {};
+    const rawByChain = {};
 
-    // Fetch in parallel, use cache where fresh
+    // Fetch raw daily data per chain (parallel, cached)
     const fetches = chains.map(async (chain) => {
       const cached = chainHistoryCache[chain];
       if (cached && (now - cached.ts) < CHAIN_HISTORY_TTL) {
-        results[chain] = cached.data;
+        rawByChain[chain] = cached.data;
         return;
       }
       try {
         const raw = await fetchJson(`${BASE}/charts/${chain}`);
         if (Array.isArray(raw)) {
-          // Keep weekly samples for last 6 years to reduce payload
           const sixYearsAgo = (now / 1000) - (6 * 365 * 86400);
-          const filtered = raw.filter(d => d.date >= sixYearsAgo);
-          // Sample weekly: keep every 7th entry (daily data → weekly)
-          const weekly = filtered.filter((_, i) => i % 7 === 0 || i === filtered.length - 1);
-          results[chain] = weekly.map(d => ({ date: d.date, tvl: d.totalLiquidityUSD ?? d.tvl ?? 0 }));
-          chainHistoryCache[chain] = { ts: now, data: results[chain] };
+          const filtered = raw
+            .filter(d => d.date >= sixYearsAgo)
+            .map(d => ({ date: d.date, tvl: d.totalLiquidityUSD ?? d.tvl ?? 0 }));
+          rawByChain[chain] = filtered;
+          chainHistoryCache[chain] = { ts: now, data: filtered };
         }
       } catch (e) {
         console.warn(`Chain history fetch failed for ${chain}:`, e.message);
-        results[chain] = [];
+        rawByChain[chain] = [];
       }
     });
 
     await Promise.all(fetches);
 
+    // Build common weekly date grid aligned to Monday epochs
+    // Collect all dates, snap to nearest week (floor to Monday 00:00 UTC)
+    const WEEK = 7 * 86400;
+    const allDatesSet = new Set();
+    for (const chain of chains) {
+      for (const pt of (rawByChain[chain] || [])) {
+        const weekDate = Math.floor(pt.date / WEEK) * WEEK;
+        allDatesSet.add(weekDate);
+      }
+    }
+    const weekDates = Array.from(allDatesSet).sort((a, b) => a - b);
+
+    // For each chain, build a lookup (snap daily → weekly bucket, keep latest value per week)
+    const aligned = {};
+    for (const chain of chains) {
+      const weekMap = new Map();
+      for (const pt of (rawByChain[chain] || [])) {
+        const weekDate = Math.floor(pt.date / WEEK) * WEEK;
+        weekMap.set(weekDate, pt.tvl); // last write wins (latest in week)
+      }
+      aligned[chain] = weekDates.map(d => ({
+        date: d,
+        tvl: weekMap.get(d) || 0,
+      }));
+    }
+
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.json({ chains: Object.keys(results), data: results });
+    res.json({ chains, dates: weekDates, data: aligned });
   } catch (e) {
     console.error('Chain history error:', e);
     res.status(500).json({ error: 'Failed to fetch chain history' });
