@@ -38,25 +38,27 @@ let cache = {
   updating: false,
 };
 
-// Normalize name for fuzzy matching
 function normalizeName(name) {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-// ── Data Fetching Pipeline ──
+// ══════════════════════════════════════════════════════════════
+// Phase 1: FAST STARTUP — bulk summary endpoints only (< 15s)
+// No per-token fetching. All 7-12 requests run in parallel.
+// ══════════════════════════════════════════════════════════════
 async function fetchAllData() {
   console.log('[cache] Starting data refresh...');
   const start = Date.now();
 
   // Phase 1: Parallel bulk fetches (free API)
   const [allProtocols, revenueData, feesData, tvlHistory, dexData, derivsData, optionsData] = await Promise.all([
-    fetchJson(`${BASE}/protocols`).catch(() => []),
-    fetchJson(`${BASE}/overview/fees?excludeTotalDataChartBreakdown=true&dataType=dailyRevenue`).catch(() => ({ protocols: [], total24h: 0, totalDataChart: [] })),
-    fetchJson(`${BASE}/overview/fees?excludeTotalDataChartBreakdown=true`).catch(() => ({ protocols: [], total24h: 0, totalDataChart: [] })),
-    fetchJson(`${BASE}/v2/historicalChainTvl`).catch(() => []),
-    fetchJson(`${BASE}/overview/dexs?excludeTotalDataChartBreakdown=true`).catch(() => null),
-    fetchJson(`${BASE}/overview/derivatives?excludeTotalDataChartBreakdown=true`).catch(() => null),
-    fetchJson(`${BASE}/overview/options?excludeTotalDataChartBreakdown=true`).catch(() => null),
+    fetchJson(`${BASE}/protocols`).catch(e => { console.error('[fetch] protocols:', e.message); return []; }),
+    fetchJson(`${BASE}/overview/fees?excludeTotalDataChartBreakdown=true&dataType=dailyRevenue`).catch(e => { console.error('[fetch] revenue:', e.message); return { protocols: [], total24h: 0, totalDataChart: [] }; }),
+    fetchJson(`${BASE}/overview/fees?excludeTotalDataChartBreakdown=true`).catch(e => { console.error('[fetch] fees:', e.message); return { protocols: [], total24h: 0, totalDataChart: [] }; }),
+    fetchJson(`${BASE}/v2/historicalChainTvl`).catch(e => { console.error('[fetch] tvl:', e.message); return []; }),
+    fetchJson(`${BASE}/overview/dexs?excludeTotalDataChartBreakdown=true`).catch(e => { console.error('[fetch] dex:', e.message); return null; }),
+    fetchJson(`${BASE}/overview/derivatives?excludeTotalDataChartBreakdown=true`).catch(e => { console.error('[fetch] derivs:', e.message); return null; }),
+    fetchJson(`${BASE}/overview/options?excludeTotalDataChartBreakdown=true`).catch(e => { console.error('[fetch] options:', e.message); return null; }),
   ]);
 
   console.log(`[cache] Phase 1 done: ${Array.isArray(allProtocols) ? allProtocols.length : 0} protocols`);
@@ -70,41 +72,38 @@ async function fetchAllData() {
 
   if (API_KEY) {
     const [tres, hacks, raises, yields, emissions] = await Promise.all([
-      fetchJson(proUrl('/api/treasuries')).catch(() => []),
-      fetchJson(proUrl('/api/hacks')).catch(() => []),
-      fetchJson(proUrl('/api/raises')).catch(() => []),
-      fetchJson(proUrl('/yields/pools')).then(r => r?.data || []).catch(() => []),
-      fetchJson(proUrl('/api/emissions')).catch(() => []),
+      fetchJson(proUrl('/api/treasuries')).catch(e => { console.error('[fetch] treasuries:', e.message); return []; }),
+      fetchJson(proUrl('/api/hacks')).catch(e => { console.error('[fetch] hacks:', e.message); return []; }),
+      fetchJson(proUrl('/api/raises')).catch(e => { console.error('[fetch] raises:', e.message); return []; }),
+      fetchJson(proUrl('/yields/pools')).then(r => r?.data || []).catch(e => { console.error('[fetch] yields:', e.message); return []; }),
+      fetchJson(proUrl('/api/emissions')).catch(e => { console.error('[fetch] emissions:', e.message); return []; }),
     ]);
     treasuryData = Array.isArray(tres) ? tres : Array.isArray(tres?.protocols) ? tres.protocols : [];
     hackData = Array.isArray(hacks) ? hacks : Array.isArray(hacks?.hacks) ? hacks.hacks : [];
     raisesData = Array.isArray(raises) ? raises : Array.isArray(raises?.raises) ? raises.raises : [];
     yieldData = Array.isArray(yields) ? yields : [];
     emissionsData = Array.isArray(emissions) ? emissions : [];
-    console.log(`[cache] Phase 2 raw shapes: tres=${typeof tres}(${Array.isArray(tres)}), hacks=${typeof hacks}(${Array.isArray(hacks)}), raises=${typeof raises}(${Array.isArray(raises)}), yields=${typeof yields}(${Array.isArray(yields)}), emissions=${typeof emissions}(${Array.isArray(emissions)})`);
     console.log(`[cache] Phase 2 done: ${treasuryData.length} treasuries, ${hackData.length} hacks, ${raisesData.length} raises, ${yieldData.length} yields, ${emissionsData.length} emissions`);
   }
 
   // ── Index by slug / name ──
   const revenueBySlug = {};
-  const revProtos = revenueData?.protocols;
-  if (Array.isArray(revProtos)) revProtos.forEach(p => { revenueBySlug[p.slug] = p; });
+  if (Array.isArray(revenueData?.protocols)) revenueData.protocols.forEach(p => { if (p.slug) revenueBySlug[p.slug] = p; });
 
   const feesBySlug = {};
-  const feeProtos = feesData?.protocols;
-  if (Array.isArray(feeProtos)) feeProtos.forEach(p => { feesBySlug[p.slug] = p; });
+  if (Array.isArray(feesData?.protocols)) feesData.protocols.forEach(p => { if (p.slug) feesBySlug[p.slug] = p; });
 
   const protocolsBySlug = {};
-  if (Array.isArray(allProtocols)) allProtocols.forEach(p => { protocolsBySlug[p.slug] = p; });
+  if (Array.isArray(allProtocols)) allProtocols.forEach(p => { if (p.slug) protocolsBySlug[p.slug] = p; });
 
   const dexBySlug = {};
-  if (Array.isArray(dexData?.protocols)) dexData.protocols.forEach(p => { dexBySlug[p.slug] = p; });
+  if (Array.isArray(dexData?.protocols)) dexData.protocols.forEach(p => { if (p.slug) dexBySlug[p.slug] = p; });
 
   const derivsBySlug = {};
-  if (Array.isArray(derivsData?.protocols)) derivsData.protocols.forEach(p => { derivsBySlug[p.slug] = p; });
+  if (Array.isArray(derivsData?.protocols)) derivsData.protocols.forEach(p => { if (p.slug) derivsBySlug[p.slug] = p; });
 
   const optionsBySlug = {};
-  if (Array.isArray(optionsData?.protocols)) optionsData.protocols.forEach(p => { optionsBySlug[p.slug] = p; });
+  if (Array.isArray(optionsData?.protocols)) optionsData.protocols.forEach(p => { if (p.slug) optionsBySlug[p.slug] = p; });
 
   const treasuryByName = {};
   const treasuryBySlug = {};
@@ -160,62 +159,7 @@ async function fetchAllData() {
 
   console.log(`[cache] ${slugsToInclude.size} protocols qualify for inclusion`);
 
-  // ── Collect gecko IDs ──
-  const allGeckoIds = new Set();
-  for (const slug of slugsToInclude) {
-    const proto = protocolsBySlug[slug];
-    if (proto?.gecko_id) allGeckoIds.add(proto.gecko_id);
-  }
-  const geckoIdArray = Array.from(allGeckoIds).filter(Boolean);
-
-  // ── Fetch price charts for top 200 by TVL ──
-  const top200 = Array.from(slugsToInclude)
-    .map(slug => {
-      const proto = protocolsBySlug[slug];
-      return { slug, geckoId: proto?.gecko_id || '', tvl: proto?.tvl || 0 };
-    })
-    .filter(x => x.geckoId)
-    .sort((a, b) => b.tvl - a.tvl)
-    .slice(0, 200)
-    .map(x => x.geckoId);
-
-  const priceCharts = {};
-  const chartBatchSize = 5;
-  for (let i = 0; i < top200.length; i += chartBatchSize) {
-    const batch = top200.slice(i, i + chartBatchSize);
-    const coins = batch.map(id => `coingecko:${id}`).join(',');
-    try {
-      const data = await fetchJson(`${COINS}/chart/${coins}?period=1w&span=52`);
-      if (data?.coins && typeof data.coins === 'object') {
-        for (const [key, value] of Object.entries(data.coins)) {
-          const geckoId = key.replace('coingecko:', '');
-          if (value && Array.isArray(value.prices)) {
-            priceCharts[geckoId] = value.prices;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn(`[cache] Price chart batch ${i} failed:`, err.message);
-    }
-  }
-  console.log(`[cache] Fetched price charts for ${Object.keys(priceCharts).length} tokens`);
-
-  // ── Fetch price percentage changes for all tokens ──
-  const priceChanges = {};
-  const changeBatchSize = 25;
-  for (let i = 0; i < geckoIdArray.length; i += changeBatchSize) {
-    const batch = geckoIdArray.slice(i, i + changeBatchSize);
-    const coins = batch.map(id => `coingecko:${id}`).join(',');
-    try {
-      const result = await fetchJson(`${COINS}/percentage/${coins}`);
-      if (result && typeof result === 'object') Object.assign(priceChanges, result);
-    } catch (err) {
-      console.warn(`[cache] Price change batch ${i} failed:`, err.message);
-    }
-  }
-  console.log(`[cache] Fetched price changes for ${Object.keys(priceChanges).length} tokens`);
-
-  // ── Build enriched protocols ──
+  // ── Build enriched protocols (NO per-token API calls) ──
   const protocols = [];
 
   for (const slug of slugsToInclude) {
@@ -235,9 +179,6 @@ async function fetchAllData() {
     const tvl = proto?.tvl || 0;
     const mcap = proto?.mcap || null;
     const revenue30d = revenue?.total30d || null;
-
-    const coinKey = `coingecko:${geckoId}`;
-    const pctData = priceChanges[coinKey];
 
     const normalName = normalizeName(name);
     const treasury = treasuryBySlug[slug] || treasuryByName[normalName] || null;
@@ -280,7 +221,7 @@ async function fetchAllData() {
       revenueAllTime: revenue?.totalAllTime || null,
       fees24h: fees?.total24h || null,
       fees30d: fees?.total30d || null,
-      priceHistory: priceCharts[geckoId] || [],
+      priceHistory: [], // fetched on-demand per protocol
       mcapToRevenue: mcap && revenue30d ? mcap / (revenue30d * 12) : null,
       tvlToRevenue: tvl && revenue30d ? tvl / (revenue30d * 12) : null,
       dexVolume24h: dex?.total24h || null,
@@ -301,9 +242,10 @@ async function fetchAllData() {
       topPoolApy: topApy,
       avgPoolApy: avgApy,
       yieldPoolCount: pools.length,
-      priceChange1d: pctData?.['1d'] ?? null,
-      priceChange7d: pctData?.['7d'] ?? null,
-      priceChange30d: pctData?.['30d'] ?? null,
+      // Price changes start with TVL changes as proxy, enriched later
+      priceChange1d: null,
+      priceChange7d: null,
+      priceChange30d: null,
       chains: proto?.chains || [],
       primaryChain: proto?.chain || '',
       chainCount: proto?.chains?.length || 0,
@@ -320,30 +262,351 @@ async function fetchAllData() {
 
   protocols.sort((a, b) => b.tvl - a.tvl);
 
-  // ── Build aggregate data ──
+  // ── Build aggregate time-series ──
   const historicalTvl = Array.isArray(tvlHistory)
     ? (tvlHistory.length > 365 ? tvlHistory.slice(-365) : tvlHistory)
     : [];
 
-  const aggregateRevenueChart = Array.isArray(revenueData?.totalDataChart)
-    ? revenueData.totalDataChart.filter(d => d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
+  const revenueChart = Array.isArray(revenueData?.totalDataChart)
+    ? revenueData.totalDataChart.filter(d => Array.isArray(d) && d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
+    : [];
+
+  const feesChart = Array.isArray(feesData?.totalDataChart)
+    ? feesData.totalDataChart.filter(d => Array.isArray(d) && d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
+    : [];
+
+  const dexVolumeChart = Array.isArray(dexData?.totalDataChart)
+    ? dexData.totalDataChart.filter(d => Array.isArray(d) && d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
     : [];
 
   const hasProData = API_KEY && (treasuryData.length > 0 || hackData.length > 0 || raisesData.length > 0);
 
+  // ── Compute analytics server-side ──
+  const analytics = computeAnalytics(protocols, hackData, raisesData);
+
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
-  console.log(`[cache] Data refresh complete: ${protocols.length} protocols, ${elapsed}s`);
+  console.log(`[cache] Data refresh complete: ${protocols.length} protocols in ${elapsed}s`);
 
   return {
     protocols,
     historicalTvl,
-    aggregateRevenueChart,
+    aggregateRevenueChart: revenueChart,
+    aggregateFeesChart: feesChart,
+    aggregateDexVolumeChart: dexVolumeChart,
     totalRevenue24h: revenueData?.total24h || 0,
     totalFees24h: feesData?.total24h || 0,
     hasProData: !!hasProData,
     lastUpdated: new Date().toISOString(),
     protocolCount: protocols.length,
+    analytics,
   };
+}
+
+// ══════════════════════════════════════════════════════════════
+// ANALYTICS ENGINE — computed server-side from bulk data
+// ══════════════════════════════════════════════════════════════
+
+function median(arr) {
+  if (!arr.length) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function computeAnalytics(protocols, hackData, raisesData) {
+  // ── 1. Category breakdown with financial depth ──
+  const categoryMap = {};
+  protocols.forEach(p => {
+    if (!p.category) return;
+    if (!categoryMap[p.category]) categoryMap[p.category] = [];
+    categoryMap[p.category].push(p);
+  });
+
+  const categoryAnalysis = Object.entries(categoryMap).map(([category, protos]) => {
+    const withRevenue = protos.filter(p => p.revenue30d > 0);
+    const withFees = protos.filter(p => p.fees30d > 0);
+    const withMcap = protos.filter(p => p.mcap > 0);
+    const withTreasury = protos.filter(p => p.treasuryTotal > 0);
+
+    const revenues = withRevenue.map(p => p.revenue30d);
+    const mcaps = withMcap.map(p => p.mcap);
+    const tvls = protos.map(p => p.tvl).filter(v => v > 0);
+    const feeToRevRatios = protos
+      .filter(p => p.fees30d > 0 && p.revenue30d > 0)
+      .map(p => p.revenue30d / p.fees30d);
+
+    return {
+      category,
+      protocolCount: protos.length,
+      totalTvl: protos.reduce((s, p) => s + p.tvl, 0),
+      totalRevenue30d: revenues.reduce((s, r) => s + r, 0),
+      totalFees30d: withFees.reduce((s, p) => s + p.fees30d, 0),
+      totalMcap: withMcap.reduce((s, p) => s + p.mcap, 0),
+      medianTvl: median(tvls),
+      medianRevenue30d: median(revenues),
+      medianMcap: median(mcaps),
+      avgRevenueRetention: feeToRevRatios.length > 0
+        ? feeToRevRatios.reduce((s, v) => s + v, 0) / feeToRevRatios.length
+        : null,
+      treasuryCount: withTreasury.length,
+      totalTreasuryValue: withTreasury.reduce((s, p) => s + p.treasuryTotal, 0),
+      hackExposure: protos.filter(p => p.hackCount > 0).length,
+      totalHackedValue: protos.reduce((s, p) => s + p.totalHackedAmount, 0),
+      avgTvlChange7d: protos.filter(p => p.tvlChange7d !== null).length > 0
+        ? protos.filter(p => p.tvlChange7d !== null).reduce((s, p) => s + p.tvlChange7d, 0) / protos.filter(p => p.tvlChange7d !== null).length
+        : null,
+      topProtocols: protos.sort((a, b) => b.tvl - a.tvl).slice(0, 5).map(p => ({
+        name: p.name, slug: p.slug, tvl: p.tvl, revenue30d: p.revenue30d, mcap: p.mcap,
+      })),
+    };
+  }).sort((a, b) => b.totalTvl - a.totalTvl);
+
+  // ── 2. Revenue efficiency rankings ──
+  const revenueEfficiency = protocols
+    .filter(p => p.revenue30d > 0 && p.tvl > 0)
+    .map(p => ({
+      name: p.name,
+      slug: p.slug,
+      category: p.category,
+      tvl: p.tvl,
+      revenue30d: p.revenue30d,
+      fees30d: p.fees30d,
+      mcap: p.mcap,
+      revenuePerTvl: p.revenue30d / p.tvl,
+      revenueRetention: p.fees30d > 0 ? p.revenue30d / p.fees30d : null,
+      mcapToRevenue: p.mcapToRevenue,
+    }))
+    .sort((a, b) => b.revenuePerTvl - a.revenuePerTvl)
+    .slice(0, 50);
+
+  // ── 3. Capital efficiency: TVL vs revenue vs market cap ──
+  const capitalEfficiency = protocols
+    .filter(p => p.mcap > 0 && p.tvl > 0 && p.revenue30d > 0)
+    .map(p => ({
+      name: p.name,
+      slug: p.slug,
+      category: p.category,
+      tvl: p.tvl,
+      mcap: p.mcap,
+      revenue30d: p.revenue30d,
+      tvlToMcap: p.tvl / p.mcap,
+      revenueYield: (p.revenue30d * 12) / p.mcap,
+      peRatio: p.mcapToRevenue,
+    }))
+    .sort((a, b) => b.revenueYield - a.revenueYield)
+    .slice(0, 50);
+
+  // ── 4. Security risk analysis ──
+  const hackAnalysis = {
+    totalHacks: hackData.length,
+    totalValueLost: hackData.reduce((s, h) => s + (h.amount || 0), 0),
+    hacksByYear: {},
+    hacksByChain: {},
+    hacksByTechnique: {},
+    mostHackedProtocols: [],
+  };
+
+  hackData.forEach(h => {
+    if (h.date) {
+      const year = new Date(h.date).getFullYear();
+      if (!hackAnalysis.hacksByYear[year]) hackAnalysis.hacksByYear[year] = { count: 0, amount: 0 };
+      hackAnalysis.hacksByYear[year].count++;
+      hackAnalysis.hacksByYear[year].amount += h.amount || 0;
+    }
+    if (h.chain) {
+      if (!hackAnalysis.hacksByChain[h.chain]) hackAnalysis.hacksByChain[h.chain] = { count: 0, amount: 0 };
+      hackAnalysis.hacksByChain[h.chain].count++;
+      hackAnalysis.hacksByChain[h.chain].amount += h.amount || 0;
+    }
+    if (h.technique) {
+      if (!hackAnalysis.hacksByTechnique[h.technique]) hackAnalysis.hacksByTechnique[h.technique] = { count: 0, amount: 0 };
+      hackAnalysis.hacksByTechnique[h.technique].count++;
+      hackAnalysis.hacksByTechnique[h.technique].amount += h.amount || 0;
+    }
+  });
+
+  hackAnalysis.mostHackedProtocols = protocols
+    .filter(p => p.hackCount > 0)
+    .sort((a, b) => b.totalHackedAmount - a.totalHackedAmount)
+    .slice(0, 20)
+    .map(p => ({ name: p.name, slug: p.slug, hackCount: p.hackCount, totalLost: p.totalHackedAmount, tvl: p.tvl }));
+
+  // ── 5. Funding landscape ──
+  const fundingAnalysis = {
+    totalRaised: raisesData.reduce((s, r) => s + (r.amount || 0), 0),
+    raiseCount: raisesData.length,
+    raisesByYear: {},
+    topFundedProtocols: protocols
+      .filter(p => p.totalRaised > 0)
+      .sort((a, b) => b.totalRaised - a.totalRaised)
+      .slice(0, 20)
+      .map(p => ({
+        name: p.name, slug: p.slug, totalRaised: p.totalRaised,
+        tvl: p.tvl, mcap: p.mcap,
+        raisedToTvl: p.tvl > 0 ? p.totalRaised / p.tvl : null,
+        raisedToMcap: p.mcap > 0 ? p.totalRaised / p.mcap : null,
+      })),
+  };
+
+  raisesData.forEach(r => {
+    if (r.date) {
+      const year = new Date(r.date).getFullYear();
+      if (!fundingAnalysis.raisesByYear[year]) fundingAnalysis.raisesByYear[year] = { count: 0, amount: 0 };
+      fundingAnalysis.raisesByYear[year].count++;
+      fundingAnalysis.raisesByYear[year].amount += r.amount || 0;
+    }
+  });
+
+  // ── 6. Chain dominance analysis ──
+  const chainStats = {};
+  protocols.forEach(p => {
+    if (!p.chains || p.chains.length === 0) return;
+    p.chains.forEach(chain => {
+      if (!chainStats[chain]) chainStats[chain] = { protocolCount: 0, totalTvl: 0, totalRevenue30d: 0, totalFees30d: 0 };
+      chainStats[chain].protocolCount++;
+    });
+    const primary = p.primaryChain || p.chains[0];
+    if (primary && chainStats[primary]) {
+      chainStats[primary].totalTvl += p.tvl;
+      chainStats[primary].totalRevenue30d += p.revenue30d || 0;
+      chainStats[primary].totalFees30d += p.fees30d || 0;
+    }
+  });
+
+  const chainAnalysis = Object.entries(chainStats)
+    .map(([chain, stats]) => ({ chain, ...stats }))
+    .sort((a, b) => b.totalTvl - a.totalTvl)
+    .slice(0, 30);
+
+  // ── 7. Yield landscape ──
+  const yieldProtocols = protocols.filter(p => p.yieldPoolCount > 0);
+  const yieldAnalysis = {
+    totalPools: yieldProtocols.reduce((s, p) => s + p.yieldPoolCount, 0),
+    protocolsWithYield: yieldProtocols.length,
+    topByApy: yieldProtocols
+      .filter(p => p.topPoolApy !== null)
+      .sort((a, b) => b.topPoolApy - a.topPoolApy)
+      .slice(0, 20)
+      .map(p => ({ name: p.name, slug: p.slug, topApy: p.topPoolApy, avgApy: p.avgPoolApy, poolCount: p.yieldPoolCount, tvl: p.tvl })),
+    avgApyByCategory: {},
+  };
+
+  const catApys = {};
+  yieldProtocols.forEach(p => {
+    if (p.avgPoolApy !== null && p.category) {
+      if (!catApys[p.category]) catApys[p.category] = [];
+      catApys[p.category].push(p.avgPoolApy);
+    }
+  });
+  for (const [cat, apys] of Object.entries(catApys)) {
+    yieldAnalysis.avgApyByCategory[cat] = {
+      avg: apys.reduce((s, v) => s + v, 0) / apys.length,
+      median: median(apys),
+      count: apys.length,
+    };
+  }
+
+  // ── 8. Market structure: concentration metrics ──
+  const totalTvl = protocols.reduce((s, p) => s + p.tvl, 0);
+  const totalRevenue = protocols.reduce((s, p) => s + (p.revenue30d || 0), 0);
+  const totalMcap = protocols.reduce((s, p) => s + (p.mcap || 0), 0);
+
+  const tvlShares = protocols.filter(p => p.tvl > 0).map(p => p.tvl / totalTvl);
+  const herfindahlTvl = tvlShares.reduce((s, sh) => s + sh * sh, 0);
+
+  const top10Tvl = protocols.slice(0, 10).reduce((s, p) => s + p.tvl, 0);
+  const top10Revenue = protocols
+    .filter(p => p.revenue30d > 0)
+    .sort((a, b) => b.revenue30d - a.revenue30d)
+    .slice(0, 10)
+    .reduce((s, p) => s + p.revenue30d, 0);
+
+  const marketStructure = {
+    totalProtocols: protocols.length,
+    totalTvl,
+    totalRevenue30d: totalRevenue,
+    totalMcap,
+    herfindahlTvl: Math.round(herfindahlTvl * 10000) / 10000,
+    top10TvlShare: totalTvl > 0 ? top10Tvl / totalTvl : 0,
+    top10RevenueShare: totalRevenue > 0 ? top10Revenue / totalRevenue : 0,
+    protocolsWithRevenue: protocols.filter(p => p.revenue30d > 0).length,
+    protocolsWithFees: protocols.filter(p => p.fees30d > 0).length,
+    protocolsWithMcap: protocols.filter(p => p.mcap > 0).length,
+    protocolsWithTreasury: protocols.filter(p => p.treasuryTotal > 0).length,
+    protocolsMultichain: protocols.filter(p => p.chainCount > 1).length,
+    avgChainCount: protocols.filter(p => p.chainCount > 0).length > 0
+      ? protocols.filter(p => p.chainCount > 0).reduce((s, p) => s + p.chainCount, 0) / protocols.filter(p => p.chainCount > 0).length
+      : 0,
+  };
+
+  // ── 9. Emissions pressure analysis ──
+  const emissionsProtocols = protocols.filter(p => p.hasEmissions);
+  const emissionsAnalysis = {
+    totalWithEmissions: emissionsProtocols.length,
+    upcomingUnlocks: emissionsProtocols.reduce((s, p) => s + p.upcomingUnlockCount, 0),
+    protocolsWithUpcoming: emissionsProtocols.filter(p => p.upcomingUnlockCount > 0)
+      .sort((a, b) => b.upcomingUnlockCount - a.upcomingUnlockCount)
+      .slice(0, 15)
+      .map(p => ({
+        name: p.name, slug: p.slug, unlockCount: p.upcomingUnlockCount,
+        nextUnlock: p.nextUnlockDate, mcap: p.mcap, tvl: p.tvl,
+      })),
+  };
+
+  return {
+    categoryAnalysis,
+    revenueEfficiency,
+    capitalEfficiency,
+    hackAnalysis,
+    fundingAnalysis,
+    chainAnalysis,
+    yieldAnalysis,
+    marketStructure,
+    emissionsAnalysis,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// Phase 2: BACKGROUND ENRICHMENT — price data (non-blocking)
+// Runs after initial cache is set, doesn't block page load.
+// ══════════════════════════════════════════════════════════════
+
+async function enrichWithPriceData() {
+  if (!cache.data) return;
+  console.log('[enrich] Starting background price enrichment...');
+  const start = Date.now();
+
+  const protocols = cache.data.protocols;
+  const geckoIds = [...new Set(protocols.map(p => p.geckoId).filter(Boolean))];
+
+  const priceChanges = {};
+  const batchSize = 25;
+  for (let i = 0; i < geckoIds.length; i += batchSize) {
+    const batch = geckoIds.slice(i, i + batchSize);
+    const coins = batch.map(id => `coingecko:${id}`).join(',');
+    try {
+      const result = await fetchJson(`${COINS}/percentage/${coins}`);
+      if (result && typeof result === 'object') Object.assign(priceChanges, result);
+    } catch (err) {
+      console.warn(`[enrich] Price batch ${i} failed:`, err.message);
+    }
+  }
+
+  let enriched = 0;
+  protocols.forEach(p => {
+    if (!p.geckoId) return;
+    const key = `coingecko:${p.geckoId}`;
+    const pct = priceChanges[key];
+    if (pct) {
+      p.priceChange1d = pct['1d'] ?? null;
+      p.priceChange7d = pct['7d'] ?? null;
+      p.priceChange30d = pct['30d'] ?? null;
+      enriched++;
+    }
+  });
+
+  const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+  console.log(`[enrich] Price enrichment done: ${enriched}/${geckoIds.length} tokens in ${elapsed}s`);
 }
 
 // ── Cache management ──
@@ -361,10 +624,11 @@ async function refreshCache() {
       initialLoadResolve();
       initialLoadResolve = null;
     }
+    // Background: enrich with price data (non-blocking)
+    enrichWithPriceData().catch(err => console.error('[enrich] Failed:', err.message));
   } catch (err) {
     console.error('[cache] Refresh failed:', err.message);
     console.error('[cache] Stack:', err.stack);
-    // Resolve initial load even on failure so requests don't hang forever
     if (initialLoadResolve) {
       initialLoadResolve();
       initialLoadResolve = null;
@@ -379,15 +643,15 @@ function getCacheAge() {
   return Date.now() - cache.lastUpdated;
 }
 
-// Promise that resolves once the first data load completes
 let initialLoadResolve;
 const initialLoadPromise = new Promise((resolve) => { initialLoadResolve = resolve; });
 
-// ── API Routes ──
+// ══════════════════════════════════════════════════════════════
+// API Routes
+// ══════════════════════════════════════════════════════════════
 
-// Main data endpoint — returns pre-processed protocol data
+// Main data endpoint — protocols + server-side analytics
 app.get('/api/protocols', async (_req, res) => {
-  // Wait up to 5 minutes for initial load
   if (!cache.data) {
     const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5 * 60 * 1000));
     try {
@@ -401,38 +665,63 @@ app.get('/api/protocols', async (_req, res) => {
     return res.status(503).json({ error: 'Data not available.' });
   }
 
-  res.setHeader('Cache-Control', 'public, max-age=300'); // browser cache 5 min
+  res.setHeader('Cache-Control', 'public, max-age=300');
   res.json(cache.data);
+});
+
+// On-demand: protocol detail with price chart + revenue/fee history
+app.get('/api/protocol/:slug', async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const geckoId = cache.data?.protocols?.find(p => p.slug === slug)?.geckoId;
+    const [revenueRes, feeRes, priceRes] = await Promise.all([
+      fetchJson(`${BASE}/summary/fees/${slug}?dataType=dailyRevenue`).catch(() => null),
+      fetchJson(`${BASE}/summary/fees/${slug}`).catch(() => null),
+      geckoId
+        ? fetchJson(`${COINS}/chart/coingecko:${geckoId}?period=1w&span=52`).catch(() => null)
+        : Promise.resolve(null),
+    ]);
+
+    const revenueHistory = Array.isArray(revenueRes?.totalDataChart)
+      ? revenueRes.totalDataChart.filter(d => Array.isArray(d) && d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
+      : [];
+
+    const feeHistory = Array.isArray(feeRes?.totalDataChart)
+      ? feeRes.totalDataChart.filter(d => Array.isArray(d) && d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
+      : [];
+
+    let priceHistory = [];
+    if (priceRes?.coins && typeof priceRes.coins === 'object') {
+      const coinData = Object.values(priceRes.coins)[0];
+      if (coinData && Array.isArray(coinData.prices)) {
+        priceHistory = coinData.prices;
+      }
+    }
+
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.json({ revenueHistory, feeHistory, priceHistory });
+  } catch (err) {
+    console.error(`[api] Protocol detail error for ${slug}:`, err.message);
+    res.json({ revenueHistory: [], feeHistory: [], priceHistory: [] });
+  }
 });
 
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({
-    status: 'ok',
+    status: cache.data ? 'ok' : 'loading',
     cacheAge: cache.lastUpdated ? `${((Date.now() - cache.lastUpdated) / 1000 / 60).toFixed(0)} minutes` : 'never',
     protocolCount: cache.data?.protocolCount || 0,
     hasProData: cache.data?.hasProData || false,
     lastUpdated: cache.data?.lastUpdated || null,
+    analyticsKeys: cache.data?.analytics ? Object.keys(cache.data.analytics) : [],
   });
-});
-
-// On-demand revenue detail for a specific protocol
-app.get('/api/protocol/:slug/revenue', async (req, res) => {
-  try {
-    const data = await fetchJson(`${BASE}/summary/fees/${req.params.slug}?dataType=dailyRevenue`);
-    const chart = Array.isArray(data?.totalDataChart)
-      ? data.totalDataChart.filter(d => d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
-      : [];
-    res.json({ revenueHistory: chart });
-  } catch {
-    res.json({ revenueHistory: [] });
-  }
 });
 
 // ── Serve static Vite build ──
 app.use(express.static(join(__dirname, 'dist')));
 
-// SPA fallback — serve index.html for all non-API routes
+// SPA fallback
 app.get('{*path}', (_req, res) => {
   res.sendFile(join(__dirname, 'dist', 'index.html'));
 });
@@ -442,13 +731,9 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`API key: ${API_KEY ? 'configured' : 'not set'}`);
 
-  // Initial data fetch
   refreshCache();
 
-  // Refresh every 4 hours
   setInterval(() => {
-    if (getCacheAge() >= CACHE_TTL) {
-      refreshCache();
-    }
-  }, 60 * 1000); // check every minute
+    if (getCacheAge() >= CACHE_TTL) refreshCache();
+  }, 60 * 1000);
 });

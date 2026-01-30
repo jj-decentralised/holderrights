@@ -34,6 +34,10 @@ export interface RightTypeStats {
   protocolNames: string[];
 }
 
+// ── Server-side analytics (computed on the server) ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ServerAnalytics = Record<string, any>;
+
 export interface DashboardData {
   protocols: EnrichedProtocol[];
   correlationPoints: CorrelationPoint[];
@@ -45,12 +49,16 @@ export interface DashboardData {
   rightTypeStats: RightTypeStats[];
   historicalTvl: { date: number; tvl: number }[];
   aggregateRevenueChart: { date: number; value: number }[];
+  aggregateFeesChart: { date: number; value: number }[];
+  aggregateDexVolumeChart: { date: number; value: number }[];
   loading: boolean;
   error: string | null;
   selectedProtocol: EnrichedProtocol | null;
   selectProtocol: (slug: string | null) => void;
   revenueHistory: { date: number; value: number }[];
+  feeHistory: { date: number; value: number }[];
   hasProData: boolean;
+  analytics: ServerAnalytics | null;
 }
 
 function median(arr: number[]): number {
@@ -74,26 +82,40 @@ export function useDefiData(): DashboardData {
   const [rightTypeStats, setRightTypeStats] = useState<RightTypeStats[]>([]);
   const [historicalTvl, setHistoricalTvl] = useState<{ date: number; tvl: number }[]>([]);
   const [aggregateRevenueChart, setAggregateRevenueChart] = useState<{ date: number; value: number }[]>([]);
+  const [aggregateFeesChart, setAggregateFeesChart] = useState<{ date: number; value: number }[]>([]);
+  const [aggregateDexVolumeChart, setAggregateDexVolumeChart] = useState<{ date: number; value: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedProtocol, setSelectedProtocol] = useState<EnrichedProtocol | null>(null);
   const [revenueHistory, setRevenueHistory] = useState<{ date: number; value: number }[]>([]);
+  const [feeHistory, setFeeHistory] = useState<{ date: number; value: number }[]>([]);
   const [hasProData, setHasProData] = useState(false);
+  const [analytics, setAnalytics] = useState<ServerAnalytics | null>(null);
 
   const selectProtocol = useCallback((slug: string | null) => {
     if (!slug) {
       setSelectedProtocol(null);
+      setRevenueHistory([]);
+      setFeeHistory([]);
       return;
     }
     const found = protocols.find((p) => p.slug === slug);
     if (found) {
       setSelectedProtocol(found);
-      // Fetch on-demand revenue history from server
-      fetch(`${API_BASE}/api/protocol/${slug}/revenue`)
+      // Fetch on-demand: price chart + revenue history + fee history
+      fetch(`${API_BASE}/api/protocol/${slug}`)
         .then((res) => res.json())
-        .then((data: { revenueHistory: { date: number; value: number }[] }) => {
-          if (Array.isArray(data.revenueHistory)) {
-            setRevenueHistory(data.revenueHistory);
+        .then((data: {
+          revenueHistory: { date: number; value: number }[];
+          feeHistory: { date: number; value: number }[];
+          priceHistory: { timestamp: number; price: number }[];
+        }) => {
+          if (Array.isArray(data.revenueHistory)) setRevenueHistory(data.revenueHistory);
+          if (Array.isArray(data.feeHistory)) setFeeHistory(data.feeHistory);
+          // Update the selected protocol's price history in-place
+          if (Array.isArray(data.priceHistory) && data.priceHistory.length > 0) {
+            found.priceHistory = data.priceHistory;
+            setSelectedProtocol({ ...found });
           }
         })
         .catch(() => {});
@@ -113,16 +135,22 @@ export function useDefiData(): DashboardData {
           protocols: Array<Omit<EnrichedProtocol, 'holderRights' | 'holderRightsScore' | 'holderRightsNotes' | 'isClassified' | 'revenueHistory'>>;
           historicalTvl: { date: number; tvl: number }[];
           aggregateRevenueChart: { date: number; value: number }[];
+          aggregateFeesChart: { date: number; value: number }[];
+          aggregateDexVolumeChart: { date: number; value: number }[];
           totalRevenue24h: number;
           totalFees24h: number;
           hasProData: boolean;
+          analytics: ServerAnalytics;
         };
 
         setTotalRevenue24h(serverData.totalRevenue24h);
         setTotalFees24h(serverData.totalFees24h);
         setHistoricalTvl(serverData.historicalTvl || []);
         setAggregateRevenueChart(serverData.aggregateRevenueChart || []);
+        setAggregateFeesChart(serverData.aggregateFeesChart || []);
+        setAggregateDexVolumeChart(serverData.aggregateDexVolumeChart || []);
         setHasProData(serverData.hasProData);
+        setAnalytics(serverData.analytics || null);
 
         // ── Merge server data with client-side holder rights classifications ──
         const classifiedBySlug: Record<string, typeof PROTOCOL_CLASSIFICATIONS[0]> = {};
@@ -147,28 +175,17 @@ export function useDefiData(): DashboardData {
         // Build correlation points (classified protocols only for scatter analysis)
         const points: CorrelationPoint[] = enriched
           .filter((p) => p.isClassified && p.mcap && p.revenue30d)
-          .map((p) => {
-            let pc30d: number | null = p.priceChange30d;
-            if (pc30d === null && p.priceHistory.length >= 2) {
-              const recent = p.priceHistory[p.priceHistory.length - 1].price;
-              const thirtyDaysAgo = Date.now() / 1000 - 30 * 86400;
-              const older = p.priceHistory.find((pt) => pt.timestamp >= thirtyDaysAgo);
-              if (older) {
-                pc30d = ((recent - older.price) / older.price) * 100;
-              }
-            }
-            return {
-              name: p.name,
-              symbol: p.symbol,
-              holderRightsScore: p.holderRightsScore,
-              holderRights: p.holderRights,
-              mcap: p.mcap,
-              revenue30d: p.revenue30d,
-              tvl: p.tvl,
-              priceChange30d: pc30d,
-              mcapToRevenue: p.mcapToRevenue,
-            };
-          });
+          .map((p) => ({
+            name: p.name,
+            symbol: p.symbol,
+            holderRightsScore: p.holderRightsScore,
+            holderRights: p.holderRights,
+            mcap: p.mcap,
+            revenue30d: p.revenue30d,
+            tvl: p.tvl,
+            priceChange30d: p.priceChange30d,
+            mcapToRevenue: p.mcapToRevenue,
+          }));
         setCorrelationPoints(points);
 
         // Revenue by category
@@ -282,11 +299,15 @@ export function useDefiData(): DashboardData {
     rightTypeStats,
     historicalTvl,
     aggregateRevenueChart,
+    aggregateFeesChart,
+    aggregateDexVolumeChart,
     loading,
     error,
     selectedProtocol,
     selectProtocol,
     revenueHistory,
+    feeHistory,
     hasProData,
+    analytics,
   };
 }
