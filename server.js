@@ -937,9 +937,9 @@ app.get('/api/chain-history', async (_req, res) => {
           const sixYearsAgo = (now / 1000) - (6 * 365 * 86400);
           // Keep sorted daily data
           const filtered = raw
-            .filter(d => d.date >= sixYearsAgo)
-            .sort((a, b) => a.date - b.date)
-            .map(d => ({ date: d.date, tvl: d.totalLiquidityUSD ?? d.tvl ?? 0 }));
+            .map(d => ({ date: Number(d.date), tvl: Number(d.totalLiquidityUSD ?? d.tvl ?? 0) }))
+            .filter(d => d.date >= sixYearsAgo && d.tvl > 0)
+            .sort((a, b) => a.date - b.date);
           rawByChain[chain] = filtered;
           chainHistoryCache[chain] = { ts: now, data: filtered };
         }
