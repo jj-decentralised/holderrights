@@ -1,30 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import {
-  fetchProtocols,
-  fetchRevenueOverview,
-  fetchFeesOverview,
-  fetchMultiplePriceCharts,
-  fetchProtocolRevenue,
-  fetchHistoricalTvl,
-  fetchDexOverview,
-  fetchDerivativesOverview,
-  fetchOptionsOverview,
-  fetchPricePercentChange,
-  fetchTreasuries,
-  fetchHacks,
-  fetchRaises,
-  fetchYieldPools,
-  fetchAllEmissions,
-  setApiKey,
-  hasApiKey,
-} from '../services/defiLlama';
-import type { LlamaProtocol, ProtocolFees, DexProtocol, DerivativesProtocol, TreasuryProtocol, HackEvent, FundingRound, YieldPool, ProtocolEmissions } from '../services/defiLlama';
 import { PROTOCOL_CLASSIFICATIONS } from '../data/protocolClassifications';
 import { HolderRight, HOLDER_RIGHT_DEFINITIONS } from '../types';
 import type { EnrichedProtocol, CorrelationPoint, HolderRight as HolderRightType } from '../types';
-
-// Minimum TVL threshold for including unclassified protocols
-const MIN_TVL_FOR_INCLUSION = 1_000_000; // $1M
 
 // ── Per-category stats ──
 
@@ -83,16 +60,10 @@ function median(arr: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-// Normalize name for fuzzy matching across APIs
-function normalizeName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
+// Server API base — uses relative URL in production, env override for dev
+const API_BASE = import.meta.env.VITE_API_BASE || '';
 
 export function useDefiData(): DashboardData {
-  // Initialize Pro API key from environment if available
-  const envKey = import.meta.env.VITE_DEFILLAMA_API_KEY;
-  if (envKey) setApiKey(envKey);
-
   const [protocols, setProtocols] = useState<EnrichedProtocol[]>([]);
   const [correlationPoints, setCorrelationPoints] = useState<CorrelationPoint[]>([]);
   const [totalRevenue24h, setTotalRevenue24h] = useState(0);
@@ -117,14 +88,12 @@ export function useDefiData(): DashboardData {
     const found = protocols.find((p) => p.slug === slug);
     if (found) {
       setSelectedProtocol(found);
-      fetchProtocolRevenue(slug)
-        .then((data) => {
-          if (data.totalDataChart) {
-            setRevenueHistory(
-              data.totalDataChart
-                .filter((d) => d[1] > 0)
-                .map((d) => ({ date: d[0], value: d[1] }))
-            );
+      // Fetch on-demand revenue history from server
+      fetch(`${API_BASE}/api/protocol/${slug}/revenue`)
+        .then((res) => res.json())
+        .then((data: { revenueHistory: { date: number; value: number }[] }) => {
+          if (Array.isArray(data.revenueHistory)) {
+            setRevenueHistory(data.revenueHistory);
           }
         })
         .catch(() => {});
@@ -136,357 +105,43 @@ export function useDefiData(): DashboardData {
       try {
         setLoading(true);
 
-        // ── Phase 1: Core data (always available) ──
-        const [allProtocols, revenueData, feesData, tvlHistory, dexData, derivsData, optionsData] = await Promise.all([
-          fetchProtocols(),
-          fetchRevenueOverview(),
-          fetchFeesOverview(),
-          fetchHistoricalTvl().catch(() => [] as { date: number; tvl: number }[]),
-          fetchDexOverview().catch(() => null),
-          fetchDerivativesOverview().catch(() => null),
-          fetchOptionsOverview().catch(() => null),
-        ]);
+        // ── Single fetch from our server's pre-processed cache ──
+        const res = await fetch(`${API_BASE}/api/protocols`);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
 
-        setTotalRevenue24h(revenueData.total24h || 0);
-        setTotalFees24h(feesData.total24h || 0);
+        const serverData = await res.json() as {
+          protocols: Array<Omit<EnrichedProtocol, 'holderRights' | 'holderRightsScore' | 'holderRightsNotes' | 'isClassified' | 'revenueHistory'>>;
+          historicalTvl: { date: number; tvl: number }[];
+          aggregateRevenueChart: { date: number; value: number }[];
+          totalRevenue24h: number;
+          totalFees24h: number;
+          hasProData: boolean;
+        };
 
-        // Store historical TVL (last 365 days for cleaner chart)
-        if (Array.isArray(tvlHistory) && tvlHistory.length > 365) {
-          setHistoricalTvl(tvlHistory.slice(-365));
-        } else if (Array.isArray(tvlHistory)) {
-          setHistoricalTvl(tvlHistory);
-        }
+        setTotalRevenue24h(serverData.totalRevenue24h);
+        setTotalFees24h(serverData.totalFees24h);
+        setHistoricalTvl(serverData.historicalTvl || []);
+        setAggregateRevenueChart(serverData.aggregateRevenueChart || []);
+        setHasProData(serverData.hasProData);
 
-        // Store aggregate revenue time-series from overview
-        if (Array.isArray(revenueData?.totalDataChart) && revenueData.totalDataChart.length) {
-          const revChart = revenueData.totalDataChart
-            .filter((d) => d[1] > 0)
-            .map((d) => ({ date: d[0], value: d[1] }));
-          setAggregateRevenueChart(revChart);
-        }
-
-        // ── Phase 2: Pro API data (if key available) ──
-        let treasuryData: TreasuryProtocol[] = [];
-        let hackData: HackEvent[] = [];
-        let raisesData: FundingRound[] = [];
-        let yieldData: YieldPool[] = [];
-        let emissionsData: ProtocolEmissions[] = [];
-
-        if (hasApiKey()) {
-          const [tres, hacks, raises, yields, emissions] = await Promise.all([
-            fetchTreasuries().catch(() => [] as TreasuryProtocol[]),
-            fetchHacks().catch(() => [] as HackEvent[]),
-            fetchRaises().catch(() => [] as FundingRound[]),
-            fetchYieldPools().then(r => r?.data || []).catch(() => [] as YieldPool[]),
-            fetchAllEmissions().catch(() => [] as ProtocolEmissions[]),
-          ]);
-          // Guard against non-array responses from pro API
-          treasuryData = Array.isArray(tres) ? tres : [];
-          hackData = Array.isArray(hacks) ? hacks : [];
-          raisesData = Array.isArray(raises) ? raises : [];
-          yieldData = Array.isArray(yields) ? yields : [];
-          emissionsData = Array.isArray(emissions) ? emissions : [];
-
-          if (treasuryData.length > 0 || hackData.length > 0 || raisesData.length > 0) {
-            setHasProData(true);
-          }
-        }
-
-        // ── Index all data by slug / name ──
-
-        const revenueBySlug: Record<string, ProtocolFees> = {};
-        const revProtos = revenueData?.protocols;
-        if (Array.isArray(revProtos)) {
-          revProtos.forEach((p) => { revenueBySlug[p.slug] = p; });
-        }
-
-        const feesBySlug: Record<string, ProtocolFees> = {};
-        const feeProtos = feesData?.protocols;
-        if (Array.isArray(feeProtos)) {
-          feeProtos.forEach((p) => { feesBySlug[p.slug] = p; });
-        }
-
-        const protocolsBySlug: Record<string, LlamaProtocol> = {};
-        if (Array.isArray(allProtocols)) {
-          allProtocols.forEach((p) => { protocolsBySlug[p.slug] = p; });
-        }
-
-        // DEX volumes by slug
-        const dexBySlug: Record<string, DexProtocol> = {};
-        const dexProtos = dexData?.protocols;
-        if (Array.isArray(dexProtos)) {
-          dexProtos.forEach((p) => { dexBySlug[p.slug] = p; });
-        }
-
-        // Derivatives volumes by slug
-        const derivsBySlug: Record<string, DerivativesProtocol> = {};
-        const derivsProtos = derivsData?.protocols;
-        if (Array.isArray(derivsProtos)) {
-          derivsProtos.forEach((p) => { derivsBySlug[p.slug] = p; });
-        }
-
-        // Options volumes by slug
-        const optionsBySlug: Record<string, DerivativesProtocol> = {};
-        const optionsProtos = optionsData?.protocols;
-        if (Array.isArray(optionsProtos)) {
-          optionsProtos.forEach((p) => { optionsBySlug[p.slug] = p; });
-        }
-
-        // Treasury by normalized name (treasury API uses names, not slugs)
-        const treasuryByName: Record<string, TreasuryProtocol> = {};
-        const treasuryBySlug: Record<string, TreasuryProtocol> = {};
-        treasuryData.forEach((t) => {
-          if (t.name) treasuryByName[normalizeName(t.name)] = t;
-          if (t.slug) treasuryBySlug[t.slug] = t;
-        });
-
-        // Hacks by normalized name (hacks use protocol names)
-        const hacksByName: Record<string, HackEvent[]> = {};
-        hackData.forEach((h) => {
-          if (!h.name) return;
-          const key = normalizeName(h.name);
-          if (!hacksByName[key]) hacksByName[key] = [];
-          hacksByName[key].push(h);
-        });
-
-        // Raises by normalized name
-        const raisesByName: Record<string, FundingRound[]> = {};
-        raisesData.forEach((r) => {
-          if (!r.name) return;
-          const key = normalizeName(r.name);
-          if (!raisesByName[key]) raisesByName[key] = [];
-          raisesByName[key].push(r);
-        });
-
-        // Yields by project slug
-        const yieldsByProject: Record<string, YieldPool[]> = {};
-        yieldData.forEach((y) => {
-          if (!y.project) return;
-          const key = y.project.toLowerCase();
-          if (!yieldsByProject[key]) yieldsByProject[key] = [];
-          yieldsByProject[key].push(y);
-        });
-
-        // Emissions by gecko ID and normalized name
-        const emissionsByGecko: Record<string, ProtocolEmissions> = {};
-        const emissionsByName: Record<string, ProtocolEmissions> = {};
-        emissionsData.forEach((e) => {
-          if (e.geckoId) emissionsByGecko[e.geckoId] = e;
-          if (e.name) emissionsByName[normalizeName(e.name)] = e;
-        });
-
-        // ── Build set of classified slugs for quick lookup ──
+        // ── Merge server data with client-side holder rights classifications ──
         const classifiedBySlug: Record<string, typeof PROTOCOL_CLASSIFICATIONS[0]> = {};
         for (const c of PROTOCOL_CLASSIFICATIONS) {
           classifiedBySlug[c.slug] = c;
         }
 
-        // ── Determine which protocols to include ──
-        // Include: all classified + any API protocol with revenue/fees OR TVL > $1M
-        const slugsToInclude = new Set<string>();
-        for (const c of PROTOCOL_CLASSIFICATIONS) {
-          slugsToInclude.add(c.slug);
-        }
-        // Add all protocols with revenue data
-        Object.keys(revenueBySlug).forEach((slug) => slugsToInclude.add(slug));
-        // Add all protocols with fee data
-        Object.keys(feesBySlug).forEach((slug) => slugsToInclude.add(slug));
-        // Add all protocols with DEX volume
-        Object.keys(dexBySlug).forEach((slug) => slugsToInclude.add(slug));
-        // Add all derivatives protocols
-        Object.keys(derivsBySlug).forEach((slug) => slugsToInclude.add(slug));
-        // Add all options protocols
-        Object.keys(optionsBySlug).forEach((slug) => slugsToInclude.add(slug));
-        // Add protocols with TVL > threshold from main API
-        if (Array.isArray(allProtocols)) {
-          allProtocols.forEach((p) => {
-            if (p.tvl >= MIN_TVL_FOR_INCLUSION) {
-              slugsToInclude.add(p.slug);
-            }
-          });
-        }
-
-        // ── Collect all gecko IDs for price data ──
-        const allGeckoIds = new Set<string>();
-        for (const slug of slugsToInclude) {
-          const classified = classifiedBySlug[slug];
-          if (classified?.geckoId) {
-            allGeckoIds.add(classified.geckoId);
-          } else {
-            const proto = protocolsBySlug[slug];
-            if (proto?.gecko_id) {
-              allGeckoIds.add(proto.gecko_id);
-            }
-          }
-        }
-        const geckoIdArray = Array.from(allGeckoIds).filter(Boolean);
-
-        // ── Fetch price charts (for classified + top unclassified by TVL) ──
-        // Price charts are expensive; limit to top 200 by TVL
-        const topGeckoIdsForCharts = Array.from(slugsToInclude)
-          .map((slug) => {
-            const proto = protocolsBySlug[slug];
-            const classified = classifiedBySlug[slug];
-            const geckoId = classified?.geckoId || proto?.gecko_id || '';
-            return { slug, geckoId, tvl: proto?.tvl || 0 };
-          })
-          .filter((x) => x.geckoId)
-          .sort((a, b) => b.tvl - a.tvl)
-          .slice(0, 200)
-          .map((x) => x.geckoId);
-
-        const priceCharts = await fetchMultiplePriceCharts(topGeckoIdsForCharts);
-
-        // ── Fetch multi-period price percentage changes (for ALL protocols) ──
-        let priceChanges: Record<string, Record<string, number>> = {};
-        try {
-          const coins = geckoIdArray.map((id) => `coingecko:${id}`);
-          const changeBatchSize = 25;
-          for (let i = 0; i < coins.length; i += changeBatchSize) {
-            const batch = coins.slice(i, i + changeBatchSize);
-            const result = await fetchPricePercentChange(batch);
-            if (result && typeof result === 'object') {
-              Object.assign(priceChanges, result);
-            }
-          }
-        } catch {
-          // Price changes are supplementary — continue without them
-        }
-
-        // ── Build enriched protocols for ALL included slugs ──
-        const enriched: EnrichedProtocol[] = [];
-
-        for (const slug of slugsToInclude) {
-          const classification = classifiedBySlug[slug];
-          const proto = protocolsBySlug[slug];
-          const revenue = revenueBySlug[slug];
-          const fees = feesBySlug[slug];
-          const dex = dexBySlug[slug];
-          const deriv = derivsBySlug[slug];
-          const option = optionsBySlug[slug];
-
-          // Determine core identity fields
-          const name = classification?.name || proto?.name || slug;
-          const symbol = classification?.symbol || proto?.symbol || '';
-          const category = classification?.category || proto?.category || '';
-          const geckoId = classification?.geckoId || proto?.gecko_id || '';
-          const logo = proto?.logo || '';
-
-          const priceHistory = priceCharts[geckoId] || [];
-
-          const tvl = proto?.tvl || 0;
-          const mcap = proto?.mcap || null;
-          const revenue30d = revenue?.total30d || null;
-
-          // Price change data
-          const coinKey = `coingecko:${geckoId}`;
-          const pctData = priceChanges[coinKey];
-          const priceChange1d = pctData?.['1d'] ?? null;
-          const priceChange7d = pctData?.['7d'] ?? null;
-          const priceChange30d = pctData?.['30d'] ?? null;
-
-          // Match treasury data
-          const normalName = normalizeName(name);
-          const treasury = treasuryBySlug[slug] || treasuryByName[normalName] || null;
-
-          // Match hack data
-          const hacks = hacksByName[normalName] || [];
-          const totalHacked = hacks.reduce((s, h) => s + (h.amount || 0), 0);
-          const lastHack = hacks.length > 0
-            ? hacks.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date
-            : null;
-
-          // Match raises data
-          const raises = raisesByName[normalName] || [];
-          const totalRaised = raises.reduce((s, r) => s + (r.amount || 0), 0);
-          const latestRaise = raises.length > 0
-            ? raises.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
-            : null;
-
-          // Match yield data
-          const pools = yieldsByProject[slug] || yieldsByProject[normalName] || [];
-          const poolApys = pools.filter(p => p.apy > 0 && p.apy < 10000).map(p => p.apy);
-          const topApy = poolApys.length > 0 ? Math.max(...poolApys) : null;
-          const avgApy = poolApys.length > 0 ? poolApys.reduce((s, v) => s + v, 0) / poolApys.length : null;
-
-          // Match emissions data
-          const emission = emissionsByGecko[geckoId] || emissionsByName[normalName] || null;
-          const futureUnlocks = emission?.futures?.filter((f) => f.timestamp > Date.now() / 1000) || [];
-          const nextUnlock = futureUnlocks.length > 0
-            ? futureUnlocks.sort((a, b) => a.timestamp - b.timestamp)[0]
-            : null;
-
-          const isClassified = !!classification;
-
-          enriched.push({
-            slug,
-            name,
-            symbol,
-            category,
-            geckoId,
-            logo,
-            tvl,
-            mcap,
-            revenue24h: revenue?.total24h || null,
-            revenue7d: revenue?.total7d || null,
-            revenue30d,
-            revenueAllTime: revenue?.totalAllTime || null,
-            fees24h: fees?.total24h || null,
-            fees30d: fees?.total30d || null,
+        const enriched: EnrichedProtocol[] = serverData.protocols.map((sp) => {
+          const classification = classifiedBySlug[sp.slug];
+          return {
+            ...sp,
             holderRights: classification?.holderRights || [],
             holderRightsScore: classification?.holderRightsScore || 0,
             holderRightsNotes: classification?.holderRightsNotes || '',
-            isClassified,
-            priceHistory,
+            isClassified: !!classification,
             revenueHistory: [],
-            mcapToRevenue: mcap && revenue30d ? mcap / (revenue30d * 12) : null,
-            tvlToRevenue: tvl && revenue30d ? tvl / (revenue30d * 12) : null,
-            // DEX volumes
-            dexVolume24h: dex?.total24h || null,
-            dexVolume30d: dex?.total30d || null,
-            // Treasury
-            treasuryTotal: treasury?.total || null,
-            treasuryStablecoins: treasury?.stablecoins || null,
-            treasuryMajors: treasury?.majors || null,
-            treasuryOwnTokens: treasury?.ownTokens || null,
-            treasuryOthers: treasury?.others || null,
-            // Hacks
-            hackCount: hacks.length,
-            totalHackedAmount: totalHacked,
-            lastHackDate: lastHack,
-            // Raises
-            totalRaised: totalRaised > 0 ? totalRaised : null,
-            latestRound: latestRaise?.round || null,
-            latestRoundDate: latestRaise?.date || null,
-            latestValuation: latestRaise?.valuation || null,
-            leadInvestors: latestRaise?.leadInvestors || [],
-            // Yields
-            topPoolApy: topApy,
-            avgPoolApy: avgApy,
-            yieldPoolCount: pools.length,
-            // Price changes
-            priceChange1d,
-            priceChange7d,
-            priceChange30d,
-            // Chain data
-            chains: proto?.chains || [],
-            primaryChain: proto?.chain || '',
-            chainCount: proto?.chains?.length || 0,
-            // TVL momentum
-            tvlChange1d: proto?.change_1d ?? null,
-            tvlChange7d: proto?.change_7d ?? null,
-            tvlChange1m: proto?.change_1m ?? null,
-            // Derivatives & options
-            derivativesVolume24h: deriv?.total24h ?? null,
-            optionsVolume24h: option?.total24h ?? null,
-            // Emissions
-            hasEmissions: !!emission,
-            upcomingUnlockCount: futureUnlocks.length,
-            nextUnlockDate: nextUnlock?.date || null,
-          });
-        }
+          };
+        });
 
-        enriched.sort((a, b) => b.tvl - a.tvl);
         setProtocols(enriched);
 
         // Build correlation points (classified protocols only for scatter analysis)
