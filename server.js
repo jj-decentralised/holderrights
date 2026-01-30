@@ -23,7 +23,12 @@ function proUrl(path) {
 async function fetchJson(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`API ${res.status}: ${url}`);
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid JSON from ${url}: ${text.slice(0, 200)}`);
+  }
 }
 
 // ── In-memory cache ──
@@ -71,11 +76,12 @@ async function fetchAllData() {
       fetchJson(proUrl('/yields/pools')).then(r => r?.data || []).catch(() => []),
       fetchJson(proUrl('/api/emissions')).catch(() => []),
     ]);
-    treasuryData = Array.isArray(tres) ? tres : [];
-    hackData = Array.isArray(hacks) ? hacks : [];
-    raisesData = Array.isArray(raises) ? raises : [];
+    treasuryData = Array.isArray(tres) ? tres : Array.isArray(tres?.protocols) ? tres.protocols : [];
+    hackData = Array.isArray(hacks) ? hacks : Array.isArray(hacks?.hacks) ? hacks.hacks : [];
+    raisesData = Array.isArray(raises) ? raises : Array.isArray(raises?.raises) ? raises.raises : [];
     yieldData = Array.isArray(yields) ? yields : [];
     emissionsData = Array.isArray(emissions) ? emissions : [];
+    console.log(`[cache] Phase 2 raw shapes: tres=${typeof tres}(${Array.isArray(tres)}), hacks=${typeof hacks}(${Array.isArray(hacks)}), raises=${typeof raises}(${Array.isArray(raises)}), yields=${typeof yields}(${Array.isArray(yields)}), emissions=${typeof emissions}(${Array.isArray(emissions)})`);
     console.log(`[cache] Phase 2 done: ${treasuryData.length} treasuries, ${hackData.length} hacks, ${raisesData.length} raises, ${yieldData.length} yields, ${emissionsData.length} emissions`);
   }
 
@@ -180,11 +186,17 @@ async function fetchAllData() {
     const coins = batch.map(id => `coingecko:${id}`).join(',');
     try {
       const data = await fetchJson(`${COINS}/chart/${coins}?period=1w&span=52`);
-      for (const [key, value] of Object.entries(data.coins)) {
-        const geckoId = key.replace('coingecko:', '');
-        priceCharts[geckoId] = value.prices;
+      if (data?.coins && typeof data.coins === 'object') {
+        for (const [key, value] of Object.entries(data.coins)) {
+          const geckoId = key.replace('coingecko:', '');
+          if (value && Array.isArray(value.prices)) {
+            priceCharts[geckoId] = value.prices;
+          }
+        }
       }
-    } catch { /* skip */ }
+    } catch (err) {
+      console.warn(`[cache] Price chart batch ${i} failed:`, err.message);
+    }
   }
   console.log(`[cache] Fetched price charts for ${Object.keys(priceCharts).length} tokens`);
 
@@ -197,7 +209,9 @@ async function fetchAllData() {
     try {
       const result = await fetchJson(`${COINS}/percentage/${coins}`);
       if (result && typeof result === 'object') Object.assign(priceChanges, result);
-    } catch { /* skip */ }
+    } catch (err) {
+      console.warn(`[cache] Price change batch ${i} failed:`, err.message);
+    }
   }
   console.log(`[cache] Fetched price changes for ${Object.keys(priceChanges).length} tokens`);
 
@@ -342,12 +356,14 @@ async function refreshCache() {
   try {
     cache.data = await fetchAllData();
     cache.lastUpdated = Date.now();
+    console.log(`[cache] Refresh succeeded: ${cache.data?.protocolCount || 0} protocols cached`);
     if (initialLoadResolve) {
       initialLoadResolve();
       initialLoadResolve = null;
     }
   } catch (err) {
     console.error('[cache] Refresh failed:', err.message);
+    console.error('[cache] Stack:', err.stack);
     // Resolve initial load even on failure so requests don't hang forever
     if (initialLoadResolve) {
       initialLoadResolve();
