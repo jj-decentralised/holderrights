@@ -38,6 +38,10 @@ export interface RightTypeStats {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type ServerAnalytics = Record<string, any>;
 
+// ── Pulse data (hourly snapshots) ──
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type PulseData = Record<string, any> | null;
+
 export interface DashboardData {
   protocols: EnrichedProtocol[];
   correlationPoints: CorrelationPoint[];
@@ -59,6 +63,7 @@ export interface DashboardData {
   feeHistory: { date: number; value: number }[];
   hasProData: boolean;
   analytics: ServerAnalytics | null;
+  pulse: PulseData;
 }
 
 function median(arr: number[]): number {
@@ -91,6 +96,7 @@ export function useDefiData(): DashboardData {
   const [feeHistory, setFeeHistory] = useState<{ date: number; value: number }[]>([]);
   const [hasProData, setHasProData] = useState(false);
   const [analytics, setAnalytics] = useState<ServerAnalytics | null>(null);
+  const [pulse, setPulse] = useState<PulseData>(null);
 
   const selectProtocol = useCallback((slug: string | null) => {
     if (!slug) {
@@ -280,12 +286,28 @@ export function useDefiData(): DashboardData {
         setRightTypeStats(rStats);
 
         setLoading(false);
+
+        // Fetch pulse data (non-blocking)
+        fetch(`${API_BASE}/api/pulse`)
+          .then((r) => r.json())
+          .then((data) => setPulse(data))
+          .catch(() => {});
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load data');
         setLoading(false);
       }
     }
     load();
+
+    // Poll pulse every 5 minutes
+    const pulseInterval = setInterval(() => {
+      fetch(`${API_BASE}/api/pulse`)
+        .then((r) => r.json())
+        .then((data) => setPulse(data))
+        .catch(() => {});
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(pulseInterval);
   }, []);
 
   return {
@@ -309,5 +331,6 @@ export function useDefiData(): DashboardData {
     feeHistory,
     hasProData,
     analytics,
+    pulse,
   };
 }

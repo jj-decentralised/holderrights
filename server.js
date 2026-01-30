@@ -647,6 +647,206 @@ let initialLoadResolve;
 const initialLoadPromise = new Promise((resolve) => { initialLoadResolve = resolve; });
 
 // ══════════════════════════════════════════════════════════════
+// HOURLY PULSE ENGINE — lightweight snapshots every hour
+// Stores 48h ring buffer, computes deltas between snapshots
+// ══════════════════════════════════════════════════════════════
+
+const PULSE_MAX_SNAPSHOTS = 48; // 48 hours of data
+const PULSE_INTERVAL = 60 * 60 * 1000; // 1 hour
+const pulseSnapshots = []; // { timestamp, tvl, revenue24h, fees24h, dexVolume24h, stablecoinMcap, topMovers, protocolTvls }
+
+async function takePulseSnapshot() {
+  console.log('[pulse] Taking hourly snapshot...');
+  const start = Date.now();
+  try {
+    // Lightweight parallel fetches — only summary endpoints
+    const [protocols, revenueData, feesData, dexData, stablecoins] = await Promise.all([
+      fetchJson(`${BASE}/protocols`).catch(() => []),
+      fetchJson(`${BASE}/overview/fees?excludeTotalDataChartBreakdown=true&dataType=dailyRevenue`).catch(() => null),
+      fetchJson(`${BASE}/overview/fees?excludeTotalDataChartBreakdown=true`).catch(() => null),
+      fetchJson(`${BASE}/overview/dexs?excludeTotalDataChartBreakdown=true`).catch(() => null),
+      fetchJson('https://stablecoins.llama.fi/stablecoins?includePrices=false').catch(() => null),
+    ]);
+
+    const totalTvl = Array.isArray(protocols)
+      ? protocols.reduce((s, p) => s + (p.tvl || 0), 0)
+      : 0;
+
+    // Build per-protocol TVL map for top 100
+    const protocolTvls = {};
+    if (Array.isArray(protocols)) {
+      protocols.sort((a, b) => (b.tvl || 0) - (a.tvl || 0));
+      protocols.slice(0, 100).forEach(p => {
+        protocolTvls[p.slug] = {
+          name: p.name,
+          tvl: p.tvl || 0,
+          change_1d: p.change_1d ?? null,
+          change_7d: p.change_7d ?? null,
+          mcap: p.mcap || null,
+        };
+      });
+    }
+
+    // Stablecoin total market cap
+    let stablecoinMcap = 0;
+    let stablecoinBreakdown = [];
+    if (stablecoins?.peggedAssets && Array.isArray(stablecoins.peggedAssets)) {
+      stablecoinBreakdown = stablecoins.peggedAssets
+        .filter(s => s.circulating?.peggedUSD > 0)
+        .map(s => ({
+          name: s.name,
+          symbol: s.symbol,
+          mcap: s.circulating.peggedUSD,
+        }))
+        .sort((a, b) => b.mcap - a.mcap)
+        .slice(0, 10);
+      stablecoinMcap = stablecoins.peggedAssets.reduce((s, a) => s + (a.circulating?.peggedUSD || 0), 0);
+    }
+
+    const snapshot = {
+      timestamp: Date.now(),
+      tvl: totalTvl,
+      revenue24h: revenueData?.total24h || 0,
+      fees24h: feesData?.total24h || 0,
+      dexVolume24h: dexData?.total24h || 0,
+      stablecoinMcap,
+      stablecoinBreakdown,
+      protocolTvls,
+    };
+
+    pulseSnapshots.push(snapshot);
+    if (pulseSnapshots.length > PULSE_MAX_SNAPSHOTS) {
+      pulseSnapshots.shift(); // Remove oldest
+    }
+
+    const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+    console.log(`[pulse] Snapshot #${pulseSnapshots.length} taken in ${elapsed}s — TVL: ${(totalTvl / 1e9).toFixed(2)}B, Revenue: ${(snapshot.revenue24h / 1e6).toFixed(2)}M`);
+  } catch (err) {
+    console.error('[pulse] Snapshot failed:', err.message);
+  }
+}
+
+function computePulseDeltas() {
+  if (pulseSnapshots.length < 2) {
+    return { snapshots: pulseSnapshots, deltas: null, alerts: [] };
+  }
+
+  const latest = pulseSnapshots[pulseSnapshots.length - 1];
+  const prior1h = pulseSnapshots.length >= 2 ? pulseSnapshots[pulseSnapshots.length - 2] : null;
+  const prior6h = pulseSnapshots.length >= 7 ? pulseSnapshots[pulseSnapshots.length - 7] : null;
+  const prior24h = pulseSnapshots.length >= 25 ? pulseSnapshots[pulseSnapshots.length - 25] : null;
+
+  function pctChange(curr, prev) {
+    if (!prev || prev === 0) return null;
+    return ((curr - prev) / prev) * 100;
+  }
+
+  const deltas = {
+    tvl: {
+      current: latest.tvl,
+      change1h: pctChange(latest.tvl, prior1h?.tvl),
+      change6h: pctChange(latest.tvl, prior6h?.tvl),
+      change24h: pctChange(latest.tvl, prior24h?.tvl),
+    },
+    revenue24h: {
+      current: latest.revenue24h,
+      change1h: pctChange(latest.revenue24h, prior1h?.revenue24h),
+      change6h: pctChange(latest.revenue24h, prior6h?.revenue24h),
+      change24h: pctChange(latest.revenue24h, prior24h?.revenue24h),
+    },
+    fees24h: {
+      current: latest.fees24h,
+      change1h: pctChange(latest.fees24h, prior1h?.fees24h),
+      change6h: pctChange(latest.fees24h, prior6h?.fees24h),
+      change24h: pctChange(latest.fees24h, prior24h?.fees24h),
+    },
+    dexVolume24h: {
+      current: latest.dexVolume24h,
+      change1h: pctChange(latest.dexVolume24h, prior1h?.dexVolume24h),
+      change6h: pctChange(latest.dexVolume24h, prior6h?.dexVolume24h),
+      change24h: pctChange(latest.dexVolume24h, prior24h?.dexVolume24h),
+    },
+    stablecoinMcap: {
+      current: latest.stablecoinMcap,
+      change1h: pctChange(latest.stablecoinMcap, prior1h?.stablecoinMcap),
+      change6h: pctChange(latest.stablecoinMcap, prior6h?.stablecoinMcap),
+      change24h: pctChange(latest.stablecoinMcap, prior24h?.stablecoinMcap),
+    },
+  };
+
+  // Detect significant movers in top protocol TVLs
+  const topMovers = [];
+  if (prior1h) {
+    for (const [slug, curr] of Object.entries(latest.protocolTvls)) {
+      const prev = prior1h.protocolTvls[slug];
+      if (!prev || prev.tvl === 0) continue;
+      const pct = ((curr.tvl - prev.tvl) / prev.tvl) * 100;
+      if (Math.abs(pct) >= 2) { // 2%+ move in 1 hour is significant
+        topMovers.push({ slug, name: curr.name, tvl: curr.tvl, change1h: pct, mcap: curr.mcap });
+      }
+    }
+    topMovers.sort((a, b) => Math.abs(b.change1h) - Math.abs(a.change1h));
+  }
+
+  // Generate alerts for significant ecosystem-wide changes
+  const alerts = [];
+  const THRESHOLD = 3; // 3% change triggers alert
+
+  if (deltas.tvl.change1h !== null && Math.abs(deltas.tvl.change1h) >= THRESHOLD) {
+    alerts.push({
+      severity: Math.abs(deltas.tvl.change1h) >= 5 ? 'high' : 'medium',
+      metric: 'TVL',
+      message: `Total DeFi TVL ${deltas.tvl.change1h > 0 ? 'surged' : 'dropped'} ${Math.abs(deltas.tvl.change1h).toFixed(1)}% in the last hour`,
+      value: deltas.tvl.change1h,
+    });
+  }
+  if (deltas.revenue24h.change1h !== null && Math.abs(deltas.revenue24h.change1h) >= THRESHOLD * 2) {
+    alerts.push({
+      severity: 'medium',
+      metric: 'Revenue',
+      message: `Daily revenue ${deltas.revenue24h.change1h > 0 ? 'up' : 'down'} ${Math.abs(deltas.revenue24h.change1h).toFixed(1)}% hour-over-hour`,
+      value: deltas.revenue24h.change1h,
+    });
+  }
+  if (deltas.dexVolume24h.change1h !== null && Math.abs(deltas.dexVolume24h.change1h) >= THRESHOLD * 2) {
+    alerts.push({
+      severity: 'medium',
+      metric: 'DEX Volume',
+      message: `DEX trading volume ${deltas.dexVolume24h.change1h > 0 ? 'spiked' : 'fell'} ${Math.abs(deltas.dexVolume24h.change1h).toFixed(1)}% in the last hour`,
+      value: deltas.dexVolume24h.change1h,
+    });
+  }
+  if (topMovers.length > 0) {
+    const biggest = topMovers[0];
+    alerts.push({
+      severity: Math.abs(biggest.change1h) >= 10 ? 'high' : 'medium',
+      metric: 'Protocol TVL',
+      message: `${biggest.name} TVL ${biggest.change1h > 0 ? 'up' : 'down'} ${Math.abs(biggest.change1h).toFixed(1)}% in 1 hour`,
+      value: biggest.change1h,
+    });
+  }
+
+  return {
+    snapshotCount: pulseSnapshots.length,
+    latestTimestamp: latest.timestamp,
+    oldestTimestamp: pulseSnapshots[0].timestamp,
+    deltas,
+    topMovers: topMovers.slice(0, 10),
+    alerts,
+    stablecoinBreakdown: latest.stablecoinBreakdown,
+    // Time series for sparklines (last 48 data points)
+    timeSeries: pulseSnapshots.map(s => ({
+      timestamp: s.timestamp,
+      tvl: s.tvl,
+      revenue24h: s.revenue24h,
+      fees24h: s.fees24h,
+      dexVolume24h: s.dexVolume24h,
+      stablecoinMcap: s.stablecoinMcap,
+    })),
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
 // API Routes
 // ══════════════════════════════════════════════════════════════
 
@@ -706,6 +906,13 @@ app.get('/api/protocol/:slug', async (req, res) => {
   }
 });
 
+// Hourly pulse — real-time deltas and alerts
+app.get('/api/pulse', (_req, res) => {
+  const pulse = computePulseDeltas();
+  res.setHeader('Cache-Control', 'public, max-age=60');
+  res.json(pulse);
+});
+
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -731,9 +938,16 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`API key: ${API_KEY ? 'configured' : 'not set'}`);
 
+  // Full data refresh (every 4 hours)
   refreshCache();
 
   setInterval(() => {
     if (getCacheAge() >= CACHE_TTL) refreshCache();
   }, 60 * 1000);
+
+  // Hourly pulse snapshots — first one after initial load, then every hour
+  initialLoadPromise.then(() => {
+    takePulseSnapshot();
+    setInterval(() => takePulseSnapshot(), PULSE_INTERVAL);
+  });
 });

@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useDefiData } from './hooks/useDefiData';
 import { Header } from './components/Header';
 import { ExecutiveSummary } from './components/ExecutiveSummary';
+import { MarketPulse } from './components/MarketPulse';
 import { ScatterPlotChart } from './components/ScatterPlot';
 import { ProtocolTable } from './components/ProtocolTable';
 import { HistoricChart } from './components/HistoricChart';
@@ -20,7 +22,11 @@ import { YieldLandscape } from './components/YieldLandscape';
 import { EmissionsAnalysis } from './components/EmissionsAnalysis';
 import './App.css';
 
+type Tab = 'dashboard' | 'analytics';
+
 function App() {
+  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+
   const {
     protocols,
     correlationPoints,
@@ -41,6 +47,7 @@ function App() {
     revenueHistory,
     hasProData,
     analytics,
+    pulse,
   } = useDefiData();
 
   if (loading) {
@@ -63,7 +70,6 @@ function App() {
     );
   }
 
-  // Find top protocols for featured price charts
   const featured = protocols
     .filter((p) => p.priceHistory.length > 0)
     .sort((a, b) => (b.mcap || 0) - (a.mcap || 0))
@@ -78,180 +84,215 @@ function App() {
         analytics={analytics}
       />
 
-      {/* Aggregate DeFi Market Charts */}
-      <section className="section">
-        <AggregateCharts
-          historicalTvl={historicalTvl}
-          aggregateRevenue={aggregateRevenueChart}
-          aggregateFees={aggregateFeesChart}
-          aggregateDexVolume={aggregateDexVolumeChart}
-        />
-      </section>
+      {/* Tab Navigation */}
+      <nav className="tab-nav">
+        <button
+          className={`tab-btn ${activeTab === 'dashboard' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          Market Dashboard
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'analytics' ? 'tab-active' : ''}`}
+          onClick={() => setActiveTab('analytics')}
+        >
+          Deep Analytics
+        </button>
+      </nav>
 
-      {/* Key Findings — auto-generated insights */}
-      {analytics && (
-        <section className="section">
-          <ExecutiveSummary
-            analytics={analytics}
-            totalRevenue24h={totalRevenue24h}
-            totalFees24h={totalFees24h}
-            tvlHistory={historicalTvl}
-            revenueChart={aggregateRevenueChart}
-            feesChart={aggregateFeesChart}
-            dexVolumeChart={aggregateDexVolumeChart}
-          />
-        </section>
-      )}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* TAB 1: MARKET DASHBOARD                                */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {activeTab === 'dashboard' && (
+        <>
+          {/* Market Pulse — hourly monitoring */}
+          <section className="section">
+            <MarketPulse pulse={pulse} />
+          </section>
 
-      {/* Market Structure & Concentration */}
-      {analytics && (
-        <section className="section">
-          <MarketStructure analytics={analytics} />
-        </section>
-      )}
+          {/* Aggregate DeFi Market Charts */}
+          <section className="section">
+            <AggregateCharts
+              historicalTvl={historicalTvl}
+              aggregateRevenue={aggregateRevenueChart}
+              aggregateFees={aggregateFeesChart}
+              aggregateDexVolume={aggregateDexVolumeChart}
+            />
+          </section>
 
-      {/* Scatter Plots Section */}
-      <section className="section">
-        <h2 className="section-title">Holder Rights vs Performance</h2>
-        <p className="section-desc">
-          Do protocols with stronger holder rights generate more revenue or command higher valuations?
-          Each dot represents a classified DeFi protocol.
-        </p>
-        <div className="chart-grid">
-          <ScatterPlotChart
-            data={correlationPoints}
-            xKey="holderRightsScore"
-            yKey="revenue30d"
-            title="Holder Rights Score vs 30d Revenue"
-            yLabel="Revenue (30d)"
-          />
-          <ScatterPlotChart
-            data={correlationPoints}
-            xKey="holderRightsScore"
-            yKey="mcap"
-            title="Holder Rights Score vs Market Cap"
-            yLabel="Market Cap"
-          />
-        </div>
-        <div className="chart-grid" style={{ marginTop: 24 }}>
-          <ScatterPlotChart
-            data={correlationPoints}
-            xKey="holderRightsScore"
-            yKey="mcapToRevenue"
-            title="Holder Rights Score vs MC/Revenue Multiple"
-            yLabel="MC/Revenue (annualized)"
-            yFormatter={(v) => `${v.toFixed(0)}x`}
-          />
-          <ScatterPlotChart
-            data={correlationPoints.filter((p) => p.priceChange30d !== null)}
-            xKey="holderRightsScore"
-            yKey="priceChange30d"
-            title="Holder Rights Score vs 30d Price Change"
-            yLabel="Price Change (%)"
-            yFormatter={(v) => `${v.toFixed(1)}%`}
-          />
-        </div>
-      </section>
-
-      {/* Revenue Efficiency Rankings */}
-      {analytics && (
-        <section className="section">
-          <RevenueEfficiency analytics={analytics} />
-        </section>
-      )}
-
-      {/* Capital Efficiency */}
-      {analytics && (
-        <section className="section">
-          <CapitalEfficiency analytics={analytics} />
-        </section>
-      )}
-
-      {/* Chain Dominance */}
-      {analytics && (
-        <section className="section">
-          <ChainDominance analytics={analytics} />
-        </section>
-      )}
-
-      {/* Holder Rights Distribution */}
-      <section className="section">
-        <RightsBreakdown
-          rightTypeStats={rightTypeStats}
-          totalProtocols={protocols.length}
-        />
-      </section>
-
-      {/* Category Analysis (simple) */}
-      <section className="section">
-        <CategoryAnalysis
-          revenueByCategory={revenueByCategory}
-          avgScoreByCategory={avgScoreByCategory}
-        />
-      </section>
-
-      {/* Category Deep Dive */}
-      <section className="section">
-        <CategoryDeepDive categoryStats={categoryStats} />
-      </section>
-
-      {/* Security & Hack Analysis */}
-      {analytics && (
-        <section className="section">
-          <HackAnalysis analytics={analytics} />
-        </section>
-      )}
-
-      {/* Funding Landscape */}
-      {analytics && (
-        <section className="section">
-          <FundingLandscape analytics={analytics} />
-        </section>
-      )}
-
-      {/* Yield Landscape */}
-      {analytics && (
-        <section className="section">
-          <YieldLandscape analytics={analytics} />
-        </section>
-      )}
-
-      {/* Token Emissions */}
-      {analytics && (
-        <section className="section">
-          <EmissionsAnalysis analytics={analytics} />
-        </section>
-      )}
-
-      {/* Featured Price Charts */}
-      {featured.length > 0 && (
-        <section className="section">
-          <h2 className="section-title">Price History — Top DeFi Tokens</h2>
-          <p className="section-desc">
-            Historic price performance for the largest DeFi tokens by market cap. Click any protocol in the table below
-            to see its individual charts.
-          </p>
-          <div className="chart-grid">
-            {featured.map((p) => (
-              <HistoricChart
-                key={p.slug}
-                title={`${p.name} (${p.symbol})`}
-                data={p.priceHistory}
+          {/* Key Findings */}
+          {analytics && (
+            <section className="section">
+              <ExecutiveSummary
+                analytics={analytics}
+                totalRevenue24h={totalRevenue24h}
+                totalFees24h={totalFees24h}
+                tvlHistory={historicalTvl}
+                revenueChart={aggregateRevenueChart}
+                feesChart={aggregateFeesChart}
+                dexVolumeChart={aggregateDexVolumeChart}
               />
-            ))}
-          </div>
-        </section>
+            </section>
+          )}
+
+          {/* Market Structure */}
+          {analytics && (
+            <section className="section">
+              <MarketStructure analytics={analytics} />
+            </section>
+          )}
+
+          {/* Revenue Efficiency */}
+          {analytics && (
+            <section className="section">
+              <RevenueEfficiency analytics={analytics} />
+            </section>
+          )}
+
+          {/* Capital Efficiency */}
+          {analytics && (
+            <section className="section">
+              <CapitalEfficiency analytics={analytics} />
+            </section>
+          )}
+
+          {/* Chain Dominance */}
+          {analytics && (
+            <section className="section">
+              <ChainDominance analytics={analytics} />
+            </section>
+          )}
+
+          {/* Scatter Plots */}
+          <section className="section">
+            <h2 className="section-title">Holder Rights vs Performance</h2>
+            <p className="section-desc">
+              Do protocols with stronger holder rights generate more revenue or command higher valuations?
+              Each dot represents a classified DeFi protocol.
+            </p>
+            <div className="chart-grid">
+              <ScatterPlotChart
+                data={correlationPoints}
+                xKey="holderRightsScore"
+                yKey="revenue30d"
+                title="Holder Rights Score vs 30d Revenue"
+                yLabel="Revenue (30d)"
+              />
+              <ScatterPlotChart
+                data={correlationPoints}
+                xKey="holderRightsScore"
+                yKey="mcap"
+                title="Holder Rights Score vs Market Cap"
+                yLabel="Market Cap"
+              />
+            </div>
+            <div className="chart-grid" style={{ marginTop: 24 }}>
+              <ScatterPlotChart
+                data={correlationPoints}
+                xKey="holderRightsScore"
+                yKey="mcapToRevenue"
+                title="Holder Rights Score vs MC/Revenue Multiple"
+                yLabel="MC/Revenue (annualized)"
+                yFormatter={(v) => `${v.toFixed(0)}x`}
+              />
+              <ScatterPlotChart
+                data={correlationPoints.filter((p) => p.priceChange30d !== null)}
+                xKey="holderRightsScore"
+                yKey="priceChange30d"
+                title="Holder Rights Score vs 30d Price Change"
+                yLabel="Price Change (%)"
+                yFormatter={(v) => `${v.toFixed(1)}%`}
+              />
+            </div>
+          </section>
+
+          {/* Featured Price Charts */}
+          {featured.length > 0 && (
+            <section className="section">
+              <h2 className="section-title">Price History — Top DeFi Tokens</h2>
+              <p className="section-desc">
+                Historic price performance for the largest DeFi tokens by market cap. Click any protocol in the table below
+                to see its individual charts.
+              </p>
+              <div className="chart-grid">
+                {featured.map((p) => (
+                  <HistoricChart
+                    key={p.slug}
+                    title={`${p.name} (${p.symbol})`}
+                    data={p.priceHistory}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Protocol Table */}
+          <section className="section">
+            <ProtocolTable protocols={protocols} onSelect={selectProtocol} hasProData={hasProData} />
+          </section>
+        </>
       )}
 
-      {/* Protocol Table */}
-      <section className="section">
-        <ProtocolTable protocols={protocols} onSelect={selectProtocol} hasProData={hasProData} />
-      </section>
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* TAB 2: DEEP ANALYTICS                                  */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {activeTab === 'analytics' && (
+        <>
+          {/* Security & Hack Analysis */}
+          {analytics && (
+            <section className="section">
+              <HackAnalysis analytics={analytics} />
+            </section>
+          )}
 
-      {/* Methodology */}
-      <section className="section">
-        <Methodology />
-      </section>
+          {/* Funding Landscape */}
+          {analytics && (
+            <section className="section">
+              <FundingLandscape analytics={analytics} />
+            </section>
+          )}
+
+          {/* Yield Landscape */}
+          {analytics && (
+            <section className="section">
+              <YieldLandscape analytics={analytics} />
+            </section>
+          )}
+
+          {/* Token Emissions */}
+          {analytics && (
+            <section className="section">
+              <EmissionsAnalysis analytics={analytics} />
+            </section>
+          )}
+
+          {/* Holder Rights Distribution */}
+          <section className="section">
+            <RightsBreakdown
+              rightTypeStats={rightTypeStats}
+              totalProtocols={protocols.length}
+            />
+          </section>
+
+          {/* Category Analysis */}
+          <section className="section">
+            <CategoryAnalysis
+              revenueByCategory={revenueByCategory}
+              avgScoreByCategory={avgScoreByCategory}
+            />
+          </section>
+
+          {/* Category Deep Dive */}
+          <section className="section">
+            <CategoryDeepDive categoryStats={categoryStats} />
+          </section>
+
+          {/* Methodology */}
+          <section className="section">
+            <Methodology />
+          </section>
+        </>
+      )}
 
       {/* Protocol Detail Modal */}
       {selectedProtocol && (
