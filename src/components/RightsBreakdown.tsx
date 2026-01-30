@@ -137,7 +137,7 @@ export function RightsBreakdown({ rightTypeStats, totalProtocols }: RightsBreakd
                 paddingAngle={2}
                 stroke="#000"
                 strokeWidth={2}
-                label={({ name, percent }: { name: string; percent?: number }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                label={({ name, percent }: { name?: string | number; percent?: number }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
               >
                 {pieData.map((entry, i) => (
                   <Cell key={i} fill={entry.fill} />
