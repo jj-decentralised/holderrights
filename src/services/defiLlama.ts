@@ -143,27 +143,48 @@ export async function fetchHistoricalTvl(): Promise<{ date: number; tvl: number 
   return fetchJson<{ date: number; tvl: number }[]>(`${BASE}/v2/historicalChainTvl`);
 }
 
-// ── Batch fetch helper ──
+// ── Batch fetch helpers ──
+
+async function fetchPriceChartBatch(
+  geckoIds: string[],
+): Promise<Record<string, { timestamp: number; price: number }[]>> {
+  const coins = geckoIds.map((id) => `coingecko:${id}`).join(',');
+  const results: Record<string, { timestamp: number; price: number }[]> = {};
+  try {
+    const data = await fetchPriceChart(coins, '1w', 52);
+    for (const [key, value] of Object.entries(data.coins)) {
+      const geckoId = key.replace('coingecko:', '');
+      results[geckoId] = value.prices;
+    }
+  } catch {
+    // Skip failed batches
+  }
+  return results;
+}
 
 export async function fetchMultiplePriceCharts(
   geckoIds: string[],
 ): Promise<Record<string, { timestamp: number; price: number }[]>> {
-  // Batch into groups of 5 to avoid URL length issues
   const results: Record<string, { timestamp: number; price: number }[]> = {};
   const batchSize = 5;
+  const concurrency = 4; // Run 4 batches in parallel at a time
 
+  // Create all batches
+  const batches: string[][] = [];
   for (let i = 0; i < geckoIds.length; i += batchSize) {
-    const batch = geckoIds.slice(i, i + batchSize);
-    const coins = batch.map((id) => `coingecko:${id}`).join(',');
-    try {
-      const data = await fetchPriceChart(coins, '1w', 52);
-      for (const [key, value] of Object.entries(data.coins)) {
-        const geckoId = key.replace('coingecko:', '');
-        results[geckoId] = value.prices;
-      }
-    } catch {
-      // Skip failed batches
+    batches.push(geckoIds.slice(i, i + batchSize));
+  }
+
+  // Process batches with limited concurrency
+  for (let i = 0; i < batches.length; i += concurrency) {
+    const concurrent = batches.slice(i, i + concurrency);
+    const batchResults = await Promise.all(
+      concurrent.map((batch) => fetchPriceChartBatch(batch))
+    );
+    for (const batchResult of batchResults) {
+      Object.assign(results, batchResult);
     }
   }
+
   return results;
 }
