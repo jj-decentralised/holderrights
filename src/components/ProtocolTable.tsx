@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { EnrichedProtocol, HOLDER_RIGHT_DEFINITIONS, HolderRight } from '../types';
+import { HOLDER_RIGHT_DEFINITIONS } from '../types';
+import type { EnrichedProtocol, HolderRight } from '../types';
 
 interface ProtocolTableProps {
   protocols: EnrichedProtocol[];

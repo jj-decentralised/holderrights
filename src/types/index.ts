@@ -1,15 +1,17 @@
 // ── Holder Rights Classification ──
 
-export enum HolderRight {
-  GOVERNANCE_VOTING = 'governance_voting',
-  REVENUE_SHARE = 'revenue_share',
-  FEE_ACCRUAL = 'fee_accrual',
-  BUYBACK_BURN = 'buyback_burn',
-  STAKING_REWARDS = 'staking_rewards',
-  TREASURY_GOVERNANCE = 'treasury_governance',
-  VETOKEN_MODEL = 'vetoken_model',
-  NONE = 'none',
-}
+export const HolderRight = {
+  GOVERNANCE_VOTING: 'governance_voting',
+  REVENUE_SHARE: 'revenue_share',
+  FEE_ACCRUAL: 'fee_accrual',
+  BUYBACK_BURN: 'buyback_burn',
+  STAKING_REWARDS: 'staking_rewards',
+  TREASURY_GOVERNANCE: 'treasury_governance',
+  VETOKEN_MODEL: 'vetoken_model',
+  NONE: 'none',
+} as const;
+
+export type HolderRight = (typeof HolderRight)[keyof typeof HolderRight];
 
 export interface HolderRightDefinition {
   id: HolderRight;

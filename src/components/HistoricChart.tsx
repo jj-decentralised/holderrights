@@ -1,6 +1,4 @@
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -46,7 +44,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   );
 }
 
-export function HistoricChart({ title, data, yLabel, color = '#fff' }: HistoricChartProps) {
+export function HistoricChart({ title, data, color = '#fff' }: HistoricChartProps) {
   if (!data.length) {
     return (
       <div className="chart-container">
@@ -152,7 +150,7 @@ export function RevenueChart({ title, data }: RevenueChartProps) {
             stroke="#333"
           />
           <Tooltip
-            formatter={(value: number) => [`$${value.toLocaleString()}`, 'Revenue']}
+            formatter={(value: number | string) => [`$${Number(value).toLocaleString()}`, 'Revenue']}
             labelFormatter={(ts) => formatDate(ts as number)}
             contentStyle={{ background: '#111', border: '1px solid #333', color: '#ccc' }}
           />

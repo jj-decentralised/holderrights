@@ -2,7 +2,7 @@ import { useDefiData } from './hooks/useDefiData';
 import { Header } from './components/Header';
 import { ScatterPlotChart } from './components/ScatterPlot';
 import { ProtocolTable } from './components/ProtocolTable';
-import { HistoricChart, RevenueChart } from './components/HistoricChart';
+import { HistoricChart } from './components/HistoricChart';
 import { CategoryAnalysis } from './components/CategoryAnalysis';
 import { ProtocolDetail } from './components/ProtocolDetail';
 import { Methodology } from './components/Methodology';

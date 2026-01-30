@@ -1,4 +1,5 @@
-import { EnrichedProtocol, HOLDER_RIGHT_DEFINITIONS } from '../types';
+import { HOLDER_RIGHT_DEFINITIONS } from '../types';
+import type { EnrichedProtocol } from '../types';
 import { HistoricChart, RevenueChart } from './HistoricChart';
 
 interface ProtocolDetailProps {

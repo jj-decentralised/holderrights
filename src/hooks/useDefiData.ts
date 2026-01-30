@@ -5,11 +5,10 @@ import {
   fetchFeesOverview,
   fetchMultiplePriceCharts,
   fetchProtocolRevenue,
-  LlamaProtocol,
-  ProtocolFees,
 } from '../services/defiLlama';
-import { PROTOCOL_CLASSIFICATIONS, CLASSIFICATIONS_BY_SLUG } from '../data/protocolClassifications';
-import { EnrichedProtocol, HolderRight, CorrelationPoint } from '../types';
+import type { LlamaProtocol, ProtocolFees } from '../services/defiLlama';
+import { PROTOCOL_CLASSIFICATIONS } from '../data/protocolClassifications';
+import type { EnrichedProtocol, CorrelationPoint } from '../types';
 
 export interface DashboardData {
   protocols: EnrichedProtocol[];
@@ -93,7 +92,6 @@ export function useDefiData(): DashboardData {
         });
 
         // Match classified protocols with live data
-        const classifiedSlugs = PROTOCOL_CLASSIFICATIONS.map((c) => c.slug);
         const geckoIds = PROTOCOL_CLASSIFICATIONS
           .map((c) => c.geckoId)
           .filter(Boolean);

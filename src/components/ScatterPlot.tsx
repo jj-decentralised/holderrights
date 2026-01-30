@@ -7,10 +7,9 @@ import {
   Tooltip,
   ResponsiveContainer,
   Label,
-  ReferenceLine,
 } from 'recharts';
-import { CorrelationPoint } from '../types';
-import { HOLDER_RIGHT_DEFINITIONS, HolderRight } from '../types';
+import { HOLDER_RIGHT_DEFINITIONS } from '../types';
+import type { CorrelationPoint } from '../types';
 
 interface ScatterPlotProps {
   data: CorrelationPoint[];
@@ -69,7 +68,6 @@ export function ScatterPlotChart({ data, xKey, yKey, title, yLabel, yFormatter }
     sumXX += x * x;
   });
   const slope = n > 1 ? (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX) : 0;
-  const intercept = n > 0 ? (sumY - slope * sumX) / n : 0;
 
   // Correlation coefficient
   const meanX = sumX / n;

@@ -1,4 +1,5 @@
-import { HolderRight, ProtocolClassification, HOLDER_RIGHT_DEFINITIONS } from '../types';
+import { HolderRight, HOLDER_RIGHT_DEFINITIONS } from '../types';
+import type { ProtocolClassification } from '../types';
 
 function computeScore(rights: HolderRight[]): number {
   return rights.reduce((sum, r) => sum + HOLDER_RIGHT_DEFINITIONS[r].weight, 0);
