@@ -33,6 +33,12 @@ function formatDate(ts: number): string {
   return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
 }
 
+function tickInterval(dataLen: number): number {
+  if (dataLen <= 14) return 1;
+  if (dataLen <= 60) return Math.floor(dataLen / 6);
+  return Math.floor(dataLen / 8);
+}
+
 function formatDateFull(ts: number): string {
   const d = new Date(ts * 1000);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -194,7 +200,7 @@ export function HistoricChart({ title, data, color = '#1a1a1a' }: HistoricChartP
               tick={{ fill: '#999', fontSize: 11, fontFamily: 'system-ui' }}
               stroke="none"
               tickLine={false}
-              interval="preserveStartEnd"
+              interval={tickInterval(displayData.length)}
             />
             <YAxis
               tickFormatter={formatPrice}
@@ -297,7 +303,7 @@ export function RevenueChart({ title, data }: RevenueChartProps) {
             tick={{ fill: '#999', fontSize: 11, fontFamily: 'system-ui' }}
             stroke="none"
             tickLine={false}
-            interval="preserveStartEnd"
+            interval={tickInterval(sliced.length)}
           />
           <YAxis
             tickFormatter={(v) => {
