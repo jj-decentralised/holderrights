@@ -58,7 +58,7 @@ export function DiscoveryDashboard({ analytics, protocols, onSelectProtocol }: P
     );
   }
 
-  const { rankings, scoreDistribution, categoryBenchmarks, totalScored } = discovery;
+  const { rankings, scoreDistribution, totalScored } = discovery;
 
   // Enrich rankings with governance factor from frontend protocol data
   const scoreMap = useMemo(() => {
@@ -86,8 +86,8 @@ export function DiscoveryDashboard({ analytics, protocols, onSelectProtocol }: P
     const arr = [...enrichedRankings];
     const key = sortKey === 'compositeScore' ? 'finalScore' : sortKey;
     arr.sort((a, b) => {
-      const av = (a as Record<string, unknown>)[key] as number;
-      const bv = (b as Record<string, unknown>)[key] as number;
+      const av = (a as unknown as Record<string, number>)[key] ?? 0;
+      const bv = (b as unknown as Record<string, number>)[key] ?? 0;
       return sortAsc ? av - bv : bv - av;
     });
     return arr.slice(0, 30);
