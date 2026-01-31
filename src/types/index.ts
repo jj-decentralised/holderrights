@@ -231,3 +231,12 @@ export interface CorrelationPoint {
   priceChange30d: number | null;
   mcapToRevenue: number | null;
 }
+
+export interface CategoryPeer {
+  name: string;
+  slug: string;
+  tvl: number;
+  revenue30d: number | null;
+  mcap: number | null;
+  fees30d: number | null;
+}

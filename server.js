@@ -869,17 +869,35 @@ app.get('/api/protocols', async (_req, res) => {
   res.json(cache.data);
 });
 
-// On-demand: protocol detail with price chart + revenue/fee history
+// On-demand: protocol detail with price chart + revenue/fee history + TVL history + peers
+const protocolDetailCache = {};
+const DETAIL_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
+const DETAIL_CACHE_MAX = 50;
+
 app.get('/api/protocol/:slug', async (req, res) => {
   const { slug } = req.params;
   try {
-    const geckoId = cache.data?.protocols?.find(p => p.slug === slug)?.geckoId;
-    const [revenueRes, feeRes, priceRes] = await Promise.all([
+    // Check detail cache
+    const now = Date.now();
+    const cached = protocolDetailCache[slug];
+    if (cached && (now - cached.ts) < DETAIL_CACHE_TTL) {
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      return res.json(cached.data);
+    }
+
+    const protocolEntry = cache.data?.protocols?.find(p => p.slug === slug);
+    const geckoId = protocolEntry?.geckoId;
+    const category = protocolEntry?.category;
+
+    const [revenueRes, feeRes, priceRes, protocolDetailRes, holdersRevRes, dexVolRes] = await Promise.all([
       fetchJson(`${BASE}/summary/fees/${slug}?dataType=dailyRevenue`).catch(() => null),
       fetchJson(`${BASE}/summary/fees/${slug}`).catch(() => null),
       geckoId
         ? fetchJson(`${COINS}/chart/coingecko:${geckoId}?period=1w&span=52`).catch(() => null)
         : Promise.resolve(null),
+      fetchJson(`${BASE}/protocol/${slug}`).catch(() => null),
+      fetchJson(`${BASE}/summary/fees/${slug}?dataType=dailyHoldersRevenue`).catch(() => null),
+      fetchJson(`${BASE}/summary/dexs/${slug}`).catch(() => null),
     ]);
 
     const revenueHistory = Array.isArray(revenueRes?.totalDataChart)
@@ -898,11 +916,113 @@ app.get('/api/protocol/:slug', async (req, res) => {
       }
     }
 
+    // TVL history from /protocol/{slug} — trim to last 2 years
+    let tvlHistory = [];
+    let chainTvls = {};
+    if (protocolDetailRes) {
+      const twoYearsAgo = (now / 1000) - (2 * 365 * 86400);
+
+      // Aggregate TVL history
+      if (Array.isArray(protocolDetailRes.tvl)) {
+        tvlHistory = protocolDetailRes.tvl
+          .filter(d => d.date >= twoYearsAgo)
+          .map(d => ({ date: d.date, tvl: d.totalLiquidityUSD ?? 0 }));
+      }
+
+      // Per-chain TVL history — top 6 chains by final TVL, rest as "Other"
+      if (protocolDetailRes.chainTvls && typeof protocolDetailRes.chainTvls === 'object') {
+        const chainEntries = Object.entries(protocolDetailRes.chainTvls)
+          .filter(([, data]) => Array.isArray(data.tvl) && data.tvl.length > 0)
+          .map(([chain, data]) => {
+            const tvlArr = data.tvl.filter(d => d.date >= twoYearsAgo);
+            const finalTvl = tvlArr.length > 0 ? (tvlArr[tvlArr.length - 1].totalLiquidityUSD ?? 0) : 0;
+            return { chain, tvlArr, finalTvl };
+          })
+          .sort((a, b) => b.finalTvl - a.finalTvl);
+
+        const topChains = chainEntries.slice(0, 6);
+        const otherChains = chainEntries.slice(6);
+
+        for (const { chain, tvlArr } of topChains) {
+          chainTvls[chain] = tvlArr.map(d => ({ date: d.date, tvl: d.totalLiquidityUSD ?? 0 }));
+        }
+
+        // Merge "Other" chains
+        if (otherChains.length > 0) {
+          const otherMap = {};
+          for (const { tvlArr } of otherChains) {
+            for (const d of tvlArr) {
+              otherMap[d.date] = (otherMap[d.date] || 0) + (d.totalLiquidityUSD ?? 0);
+            }
+          }
+          const otherArr = Object.entries(otherMap)
+            .map(([date, tvl]) => ({ date: Number(date), tvl }))
+            .sort((a, b) => a.date - b.date);
+          if (otherArr.length > 0) {
+            chainTvls['Other'] = otherArr;
+          }
+        }
+      }
+    }
+
+    // Holders revenue history
+    const holdersRevenueHistory = Array.isArray(holdersRevRes?.totalDataChart)
+      ? holdersRevRes.totalDataChart.filter(d => Array.isArray(d) && d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
+      : [];
+
+    // DEX volume history
+    const dexVolumeHistory = Array.isArray(dexVolRes?.totalDataChart)
+      ? dexVolRes.totalDataChart.filter(d => Array.isArray(d) && d[1] > 0).map(d => ({ date: d[0], value: d[1] }))
+      : [];
+
+    // Category peers — top 10 in same category by TVL
+    let categoryPeers = [];
+    if (category && cache.data?.protocols) {
+      categoryPeers = cache.data.protocols
+        .filter(p => p.category === category && p.slug !== slug)
+        .sort((a, b) => (b.tvl || 0) - (a.tvl || 0))
+        .slice(0, 10)
+        .map(p => ({
+          name: p.name,
+          slug: p.slug,
+          tvl: p.tvl || 0,
+          revenue30d: p.revenue30d ?? null,
+          mcap: p.mcap ?? null,
+          fees30d: p.fees30d ?? null,
+        }));
+    }
+
+    const result = {
+      revenueHistory,
+      feeHistory,
+      priceHistory,
+      tvlHistory,
+      chainTvls,
+      holdersRevenueHistory,
+      dexVolumeHistory,
+      categoryPeers,
+    };
+
+    // Cache the result (evict oldest if at limit)
+    const keys = Object.keys(protocolDetailCache);
+    if (keys.length >= DETAIL_CACHE_MAX) {
+      let oldest = keys[0];
+      for (const k of keys) {
+        if (protocolDetailCache[k].ts < protocolDetailCache[oldest].ts) oldest = k;
+      }
+      delete protocolDetailCache[oldest];
+    }
+    protocolDetailCache[slug] = { ts: now, data: result };
+
     res.setHeader('Cache-Control', 'public, max-age=300');
-    res.json({ revenueHistory, feeHistory, priceHistory });
+    res.json(result);
   } catch (err) {
     console.error(`[api] Protocol detail error for ${slug}:`, err.message);
-    res.json({ revenueHistory: [], feeHistory: [], priceHistory: [] });
+    res.json({
+      revenueHistory: [], feeHistory: [], priceHistory: [],
+      tvlHistory: [], chainTvls: {}, holdersRevenueHistory: [],
+      dexVolumeHistory: [], categoryPeers: [],
+    });
   }
 });
 

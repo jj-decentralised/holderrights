@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { PROTOCOL_CLASSIFICATIONS } from '../data/protocolClassifications';
 import { HolderRight, HOLDER_RIGHT_DEFINITIONS } from '../types';
-import type { EnrichedProtocol, CorrelationPoint, HolderRight as HolderRightType } from '../types';
+import type { EnrichedProtocol, CorrelationPoint, CategoryPeer, HolderRight as HolderRightType } from '../types';
 
 // ── Per-category stats ──
 
@@ -64,6 +64,11 @@ export interface DashboardData {
   hasProData: boolean;
   analytics: ServerAnalytics | null;
   pulse: PulseData;
+  protocolTvlHistory: { date: number; tvl: number }[];
+  protocolChainTvls: Record<string, { date: number; tvl: number }[]>;
+  holdersRevenueHistory: { date: number; value: number }[];
+  dexVolumeHistory: { date: number; value: number }[];
+  categoryPeers: CategoryPeer[];
 }
 
 function median(arr: number[]): number {
@@ -97,27 +102,47 @@ export function useDefiData(): DashboardData {
   const [hasProData, setHasProData] = useState(false);
   const [analytics, setAnalytics] = useState<ServerAnalytics | null>(null);
   const [pulse, setPulse] = useState<PulseData>(null);
+  const [protocolTvlHistory, setProtocolTvlHistory] = useState<{ date: number; tvl: number }[]>([]);
+  const [protocolChainTvls, setProtocolChainTvls] = useState<Record<string, { date: number; tvl: number }[]>>({});
+  const [holdersRevenueHistory, setHoldersRevenueHistory] = useState<{ date: number; value: number }[]>([]);
+  const [dexVolumeHistory, setDexVolumeHistory] = useState<{ date: number; value: number }[]>([]);
+  const [categoryPeers, setCategoryPeers] = useState<CategoryPeer[]>([]);
 
   const selectProtocol = useCallback((slug: string | null) => {
     if (!slug) {
       setSelectedProtocol(null);
       setRevenueHistory([]);
       setFeeHistory([]);
+      setProtocolTvlHistory([]);
+      setProtocolChainTvls({});
+      setHoldersRevenueHistory([]);
+      setDexVolumeHistory([]);
+      setCategoryPeers([]);
       return;
     }
     const found = protocols.find((p) => p.slug === slug);
     if (found) {
       setSelectedProtocol(found);
-      // Fetch on-demand: price chart + revenue history + fee history
+      // Fetch on-demand: price chart + revenue history + fee history + TVL + peers
       fetch(`${API_BASE}/api/protocol/${slug}`)
         .then((res) => res.json())
         .then((data: {
           revenueHistory: { date: number; value: number }[];
           feeHistory: { date: number; value: number }[];
           priceHistory: { timestamp: number; price: number }[];
+          tvlHistory: { date: number; tvl: number }[];
+          chainTvls: Record<string, { date: number; tvl: number }[]>;
+          holdersRevenueHistory: { date: number; value: number }[];
+          dexVolumeHistory: { date: number; value: number }[];
+          categoryPeers: CategoryPeer[];
         }) => {
           if (Array.isArray(data.revenueHistory)) setRevenueHistory(data.revenueHistory);
           if (Array.isArray(data.feeHistory)) setFeeHistory(data.feeHistory);
+          if (Array.isArray(data.tvlHistory)) setProtocolTvlHistory(data.tvlHistory);
+          if (data.chainTvls && typeof data.chainTvls === 'object') setProtocolChainTvls(data.chainTvls);
+          if (Array.isArray(data.holdersRevenueHistory)) setHoldersRevenueHistory(data.holdersRevenueHistory);
+          if (Array.isArray(data.dexVolumeHistory)) setDexVolumeHistory(data.dexVolumeHistory);
+          if (Array.isArray(data.categoryPeers)) setCategoryPeers(data.categoryPeers);
           // Update the selected protocol's price history in-place
           if (Array.isArray(data.priceHistory) && data.priceHistory.length > 0) {
             found.priceHistory = data.priceHistory;
@@ -333,5 +358,10 @@ export function useDefiData(): DashboardData {
     hasProData,
     analytics,
     pulse,
+    protocolTvlHistory,
+    protocolChainTvls,
+    holdersRevenueHistory,
+    dexVolumeHistory,
+    categoryPeers,
   };
 }

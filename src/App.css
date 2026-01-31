@@ -1047,7 +1047,7 @@
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 6px;
-  max-width: 900px;
+  max-width: 1100px;
   width: 100%;
   padding: 32px;
   position: relative;
@@ -1785,5 +1785,196 @@
   .period-btn {
     padding: 5px 10px;
     font-size: 11px;
+  }
+
+  .tab-summary-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .tab-section-group-content > .section {
+    margin-top: 32px;
+  }
+}
+
+/* ── Tab Section Groups ── */
+
+.tab-section-group {
+  margin-top: 48px;
+  padding-top: 40px;
+  border-top: 1px solid var(--border);
+}
+
+.tab-section-group-first {
+  margin-top: 24px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.tab-section-group-header {
+  margin-bottom: 8px;
+}
+
+.tab-section-group-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--black);
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.tab-section-group-desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-style: italic;
+  max-width: 640px;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.tab-section-group-content > .section {
+  margin-top: 40px;
+}
+
+.tab-section-group-content > .section:first-child {
+  margin-top: 20px;
+}
+
+/* ── Tab Summary Bar ── */
+
+.tab-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+  margin-bottom: 8px;
+}
+
+.tab-summary-metric {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 14px 18px;
+  border-radius: 4px;
+}
+
+.tab-summary-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.tab-summary-value {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--black);
+  font-variant-numeric: tabular-nums;
+}
+
+.tab-summary-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* ── Enhanced Detail Panel ── */
+
+.detail-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.detail-tab-btn {
+  background: none;
+  border: none;
+  padding: 10px 20px;
+  font-family: var(--font-serif, 'EB Garamond', Georgia, serif);
+  font-size: 14px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.detail-tab-btn:hover {
+  color: var(--black);
+}
+
+.detail-tab-active {
+  color: var(--black);
+  font-weight: 600;
+  border-bottom-color: var(--black);
+}
+
+.peer-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-top: 16px;
+}
+
+.peer-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.peer-table thead {
+  background: var(--bg-raised);
+}
+
+.peer-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.peer-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.peer-row-highlight {
+  background: var(--bg-raised);
+  font-weight: 600;
+}
+
+.peer-row-highlight td {
+  color: var(--black);
+}
+
+.history-charts-grid {
+  display: grid;
+  gap: 24px;
+}
+
+.history-chart-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.history-chart-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .detail-tab-btn {
+    padding: 8px 14px;
+    font-size: 13px;
   }
 }
