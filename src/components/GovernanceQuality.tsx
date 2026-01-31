@@ -38,8 +38,8 @@ interface Props {
   correlationPoints: {
     name: string;
     holderRightsScore: number;
-    revenue30d: number;
-    mcap: number;
+    revenue30d: number | null;
+    mcap: number | null;
     tvl: number;
     category: string;
     priceChange30d: number | null;
@@ -68,7 +68,7 @@ function RevenueTooltip({ active, payload }: any) {
     <div style={tooltipStyle}>
       <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.name}</div>
       <div>Score: {d.holderRightsScore}/10</div>
-      <div>Revenue (30d): {fmt(d.revenue30d)}</div>
+      <div>Revenue (30d): {fmt(d.revenue30d ?? 0)}</div>
       <div>Category: {d.category}</div>
     </div>
   );
@@ -78,7 +78,7 @@ export function GovernanceQuality({ correlationPoints }: Props) {
   if (correlationPoints.length < 5) return null;
 
   const tvlData = correlationPoints.filter((p) => p.tvl > 0);
-  const revData = correlationPoints.filter((p) => p.revenue30d > 0);
+  const revData = correlationPoints.filter((p) => (p.revenue30d ?? 0) > 0);
 
   const highScore = correlationPoints.filter((p) => p.holderRightsScore >= 7 && p.tvl > 0);
   const lowScore = correlationPoints.filter((p) => p.holderRightsScore < 4 && p.tvl > 0);
@@ -192,8 +192,8 @@ export function GovernanceQuality({ correlationPoints }: Props) {
                     <td><span className="category-badge">{p.category}</span></td>
                     <td className="num-cell">{p.holderRightsScore}/10</td>
                     <td className="num-cell">{fmt(p.tvl)}</td>
-                    <td className="num-cell">{p.mcap > 0 ? fmt(p.mcap) : '—'}</td>
-                    <td className="num-cell">{p.revenue30d > 0 ? fmt(p.revenue30d) : '—'}</td>
+                    <td className="num-cell">{(p.mcap ?? 0) > 0 ? fmt(p.mcap!) : '—'}</td>
+                    <td className="num-cell">{(p.revenue30d ?? 0) > 0 ? fmt(p.revenue30d!) : '—'}</td>
                     <td className="num-cell" style={{ color: chgColor }}>
                       {chg != null ? `${chg >= 0 ? '+' : ''}${chg.toFixed(1)}%` : '—'}
                     </td>

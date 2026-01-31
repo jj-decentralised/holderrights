@@ -192,7 +192,7 @@ export function MomentumScanner({ protocols }: Props) {
                   <tr key={p.slug}>
                     <td className="cat-name-cell">{p.name}</td>
                     <td className="cat-name-cell">{p.category}</td>
-                    <td className="num-cell">{fmt(p.mcap)}</td>
+                    <td className="num-cell">{fmt(p.mcap ?? 0)}</td>
                     <ChgCell value={p.priceChange30d} />
                   </tr>
                 ))}
@@ -218,7 +218,7 @@ export function MomentumScanner({ protocols }: Props) {
                   <tr key={p.slug}>
                     <td className="cat-name-cell">{p.name}</td>
                     <td className="cat-name-cell">{p.category}</td>
-                    <td className="num-cell">{fmt(p.mcap)}</td>
+                    <td className="num-cell">{fmt(p.mcap ?? 0)}</td>
                     <ChgCell value={p.priceChange30d} />
                   </tr>
                 ))}
@@ -290,7 +290,7 @@ export function MomentumScanner({ protocols }: Props) {
                 <td className="cat-name-cell">{p.name}</td>
                 <td className="cat-name-cell">{p.category}</td>
                 <td className="num-cell">{fmt(p.tvl)}</td>
-                <td className="num-cell">{fmt(p.mcap)}</td>
+                <td className="num-cell">{fmt(p.mcap ?? 0)}</td>
                 <ChgCell value={p.tvlChange1m} />
                 <ChgCell value={p.priceChange30d} />
                 <td className="num-cell" style={{ fontWeight: 600 }}>{p.divergence.toFixed(1)}%</td>
