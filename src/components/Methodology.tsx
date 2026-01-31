@@ -139,6 +139,70 @@ export function Methodology() {
         </div>
 
         <div className="methodology-block">
+          <h3>Academic &amp; Research Foundations</h3>
+          <p>
+            The governance analysis on this site draws on peer-reviewed academic literature and
+            institutional research frameworks. Key sources informing our methodology:
+          </p>
+          <table className="methodology-table">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Key Finding</th>
+                <th>Application</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Lo Monaco, Momtaz &amp; Vismara (2025)</strong><br /><em>Economics Letters</em></td>
+                <td>DAO proposal passage increases token returns by +4.7% (regression discontinuity). Voter participation amplifies returns by +2.2% per standard deviation.</td>
+                <td>Governance quality scoring; voter participation as value signal</td>
+              </tr>
+              <tr>
+                <td><strong>Outerlands Capital (2024)</strong><br /><em>Governance Token Evaluation Framework</em></td>
+                <td>Two-axis framework: Economic Control (cash-flow rights) vs Reliability (enforcement strength). Tokens with strong control over economic parameters can be DCF-valued.</td>
+                <td>Control vs Reliability quadrant map; governance quality classification</td>
+              </tr>
+              <tr>
+                <td><strong>Lommers, Xu &amp; Xu (2022)</strong><br /><em>Journal of Financial Economics / SSRN</em></td>
+                <td>DAO token value derives from three pillars: community membership, utility, and governance rights. "Discounted Value of Benefits" model parallels corporate control premiums.</td>
+                <td>Governance premium quantification; tier-based valuation comparison</td>
+              </tr>
+              <tr>
+                <td><strong>JFE Token-Based Platform Governance (2024)</strong><br /><em>Journal of Financial Economics</em></td>
+                <td>Tokens bundling cash-flow claims + transaction services + governance rights create more efficient equilibria than traditional equity governance.</td>
+                <td>Rights combination analysis; bundling value assessment</td>
+              </tr>
+              <tr>
+                <td><strong>Rossello (2024)</strong><br /><em>SSRN Working Paper</em></td>
+                <td>Majority blockholder override of minority holders causes -12.77% weekly abnormal returns. Pre-vote token accumulation detected in ~15% of proposals.</td>
+                <td>Governance concentration risk assessment</td>
+              </tr>
+              <tr>
+                <td><strong>Cong et al. (2025)</strong><br /><em>Fudan / Wharton</em></td>
+                <td>Concentrated governance ownership fosters whale-vs-community conflicts that negatively affect platform growth.</td>
+                <td>Decentralization analysis; concentration risk scoring</td>
+              </tr>
+              <tr>
+                <td><strong>Technology in Society (2023)</strong></td>
+                <td>DeFi governance tends toward "timocracy" — plutocratic rule — when voting rights are freely tradeable without anti-concentration protections.</td>
+                <td>Limitations acknowledgment; governance model risk assessment</td>
+              </tr>
+              <tr>
+                <td><strong>EPJ Data Science (2025)</strong></td>
+                <td>Persistent cross-protocol governance token overlap among institutional actors. Concentration shifts correlate with TVL and valuation changes.</td>
+                <td>Cross-protocol governance concentration analysis</td>
+              </tr>
+              <tr>
+                <td><strong>Hall / a16z (2025)</strong><br /><em>Stanford / a16z crypto</em></td>
+                <td>Governance rights should only be attached to tokens when decisions cannot be fully automated in smart contracts, or when crowdsourcing engagement adds value.</td>
+                <td>Governance scope evaluation; right-type appropriateness</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="methodology-block">
           <h3>Proposed Extended Metrics (Pro API)</h3>
           <p>
             When a DeFi Llama Pro API key is configured, the following additional analyses become available:

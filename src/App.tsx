@@ -26,6 +26,9 @@ import { MomentumScanner } from './components/MomentumScanner';
 import { RiskReturn } from './components/RiskReturn';
 import { FundingPerformance } from './components/FundingPerformance';
 import { GovernanceQuality } from './components/GovernanceQuality';
+import { GovernanceFramework } from './components/GovernanceFramework';
+import { GovernancePremium } from './components/GovernancePremium';
+import { RightsEconomicImpact } from './components/RightsEconomicImpact';
 import './App.css';
 
 type Tab = 'overview' | 'protocols' | 'chains' | 'risk' | 'governance';
@@ -298,9 +301,24 @@ function App() {
       {/* ═══════════════════════════════════════════════════════════ */}
       {activeTab === 'governance' && (
         <>
-          {/* Governance Quality */}
+          {/* Governance Quality Framework (Outerlands 2-axis model) */}
+          <section className="section">
+            <GovernanceFramework protocols={protocols} />
+          </section>
+
+          {/* The Governance Premium — tier-based valuation comparison */}
+          <section className="section">
+            <GovernancePremium protocols={protocols} />
+          </section>
+
+          {/* Governance Quality — score vs TVL/revenue scatter */}
           <section className="section">
             <GovernanceQuality correlationPoints={correlationPoints} />
+          </section>
+
+          {/* Rights Economic Impact — per-right premium analysis */}
+          <section className="section">
+            <RightsEconomicImpact rightTypeStats={rightTypeStats} protocols={protocols} />
           </section>
 
           {/* Holder Rights vs Performance */}
