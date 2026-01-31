@@ -431,11 +431,186 @@ function computeAnalytics(protocols, hackData, raisesData) {
     .slice(0, 20)
     .map(p => ({ name: p.name, slug: p.slug, hackCount: p.hackCount, totalLost: p.totalHackedAmount, tvl: p.tvl }));
 
-  // ── 5. Funding landscape ──
+  // ── 5. Funding landscape (enriched) ──
+  const fundedProtocols = protocols.filter(p => p.totalRaised > 0);
+  const totalRaisedAll = raisesData.reduce((s, r) => s + (r.amount || 0), 0);
+
+  // Round-type breakdown
+  const roundTypes = {};
+  raisesData.forEach(r => {
+    const round = (r.round || 'Unknown').trim();
+    if (!roundTypes[round]) roundTypes[round] = { count: 0, totalAmount: 0, avgAmount: 0, protocols: new Set() };
+    roundTypes[round].count++;
+    roundTypes[round].totalAmount += r.amount || 0;
+    if (r.name) roundTypes[round].protocols.add(normalizeName(r.name));
+  });
+  const roundTypeBreakdown = Object.entries(roundTypes)
+    .map(([round, d]) => ({
+      round,
+      count: d.count,
+      totalAmount: d.totalAmount,
+      avgAmount: d.count > 0 ? Math.round(d.totalAmount / d.count) : 0,
+      protocolCount: d.protocols.size,
+      shareOfTotal: totalRaisedAll > 0 ? Math.round((d.totalAmount / totalRaisedAll) * 10000) / 100 : 0,
+    }))
+    .sort((a, b) => b.totalAmount - a.totalAmount)
+    .slice(0, 12);
+
+  // Yearly data with round-type composition
+  const raisesByYear = {};
+  raisesData.forEach(r => {
+    if (!r.date) return;
+    const year = new Date(r.date).getFullYear();
+    if (!raisesByYear[year]) raisesByYear[year] = { count: 0, amount: 0, medianAmount: [], roundMix: {} };
+    raisesByYear[year].count++;
+    raisesByYear[year].amount += r.amount || 0;
+    if (r.amount > 0) raisesByYear[year].medianAmount.push(r.amount);
+    const round = (r.round || 'Unknown').trim();
+    if (!raisesByYear[year].roundMix[round]) raisesByYear[year].roundMix[round] = 0;
+    raisesByYear[year].roundMix[round] += r.amount || 0;
+  });
+  // Compute medians
+  Object.values(raisesByYear).forEach(d => {
+    const arr = d.medianAmount.sort((a, b) => a - b);
+    d.median = arr.length > 0 ? arr[Math.floor(arr.length / 2)] : 0;
+    delete d.medianAmount;
+  });
+
+  // Vintage cohort analysis: group funded protocols by year of latest raise
+  const vintageCohorts = {};
+  fundedProtocols.forEach(p => {
+    if (!p.latestRoundDate) return;
+    const year = new Date(p.latestRoundDate).getFullYear();
+    if (!vintageCohorts[year]) vintageCohorts[year] = { protocols: [], totalRaised: 0, totalTvl: 0, totalMcap: 0, totalRevenue30d: 0 };
+    vintageCohorts[year].protocols.push(p);
+    vintageCohorts[year].totalRaised += p.totalRaised || 0;
+    vintageCohorts[year].totalTvl += p.tvl || 0;
+    vintageCohorts[year].totalMcap += (p.mcap || 0);
+    vintageCohorts[year].totalRevenue30d += (p.revenue30d || 0);
+  });
+  const vintageData = Object.entries(vintageCohorts)
+    .map(([year, d]) => ({
+      year: Number(year),
+      protocolCount: d.protocols.length,
+      totalRaised: d.totalRaised,
+      totalTvl: d.totalTvl,
+      totalMcap: d.totalMcap,
+      totalRevenue30d: d.totalRevenue30d,
+      medianTvlRatio: (() => {
+        const ratios = d.protocols.map(p => p.tvl / p.totalRaised).sort((a, b) => a - b);
+        return ratios.length > 0 ? Math.round(ratios[Math.floor(ratios.length / 2)] * 100) / 100 : 0;
+      })(),
+      medianMcapRatio: (() => {
+        const ratios = d.protocols.filter(p => p.mcap > 0).map(p => p.mcap / p.totalRaised).sort((a, b) => a - b);
+        return ratios.length > 0 ? Math.round(ratios[Math.floor(ratios.length / 2)] * 100) / 100 : 0;
+      })(),
+      capitalEfficiency: d.totalRaised > 0 ? Math.round((d.totalTvl / d.totalRaised) * 100) / 100 : 0,
+      revenueYield: d.totalRaised > 0 ? Math.round((d.totalRevenue30d * 12 / d.totalRaised) * 10000) / 100 : 0,
+    }))
+    .sort((a, b) => a.year - b.year);
+
+  // Investor analytics: most active lead investors and their portfolio metrics
+  const investorMap = {};
+  fundedProtocols.forEach(p => {
+    if (!p.leadInvestors || p.leadInvestors.length === 0) return;
+    p.leadInvestors.forEach(inv => {
+      const name = (inv || '').trim();
+      if (!name) return;
+      if (!investorMap[name]) investorMap[name] = { name, deals: 0, totalInvested: 0, portfolioTvl: 0, portfolioMcap: 0, portfolioRevenue: 0, protocols: [] };
+      investorMap[name].deals++;
+      investorMap[name].totalInvested += p.totalRaised || 0;
+      investorMap[name].portfolioTvl += p.tvl || 0;
+      investorMap[name].portfolioMcap += (p.mcap || 0);
+      investorMap[name].portfolioRevenue += (p.revenue30d || 0);
+      investorMap[name].protocols.push(p.name);
+    });
+  });
+  const topInvestors = Object.values(investorMap)
+    .filter(inv => inv.deals >= 3)
+    .map(inv => ({
+      name: inv.name,
+      deals: inv.deals,
+      totalInvested: inv.totalInvested,
+      portfolioTvl: inv.portfolioTvl,
+      portfolioMcap: inv.portfolioMcap,
+      portfolioRevenue: Math.round(inv.portfolioRevenue * 12),
+      tvlPerDollarInvested: inv.totalInvested > 0 ? Math.round((inv.portfolioTvl / inv.totalInvested) * 100) / 100 : 0,
+      mcapPerDollarInvested: inv.totalInvested > 0 ? Math.round((inv.portfolioMcap / inv.totalInvested) * 100) / 100 : 0,
+      topProtocols: inv.protocols.slice(0, 5),
+    }))
+    .sort((a, b) => b.deals - a.deals)
+    .slice(0, 20);
+
+  // Category funding efficiency
+  const catFunding = {};
+  fundedProtocols.forEach(p => {
+    const cat = p.category || 'Other';
+    if (!catFunding[cat]) catFunding[cat] = { raised: 0, tvl: 0, mcap: 0, revenue30d: 0, count: 0 };
+    catFunding[cat].raised += p.totalRaised || 0;
+    catFunding[cat].tvl += p.tvl || 0;
+    catFunding[cat].mcap += (p.mcap || 0);
+    catFunding[cat].revenue30d += (p.revenue30d || 0);
+    catFunding[cat].count++;
+  });
+  const categoryFundingEfficiency = Object.entries(catFunding)
+    .filter(([, d]) => d.count >= 3 && d.raised > 0)
+    .map(([category, d]) => ({
+      category,
+      protocolCount: d.count,
+      totalRaised: d.raised,
+      totalTvl: d.tvl,
+      tvlPerRaised: Math.round((d.tvl / d.raised) * 100) / 100,
+      mcapPerRaised: d.mcap > 0 ? Math.round((d.mcap / d.raised) * 100) / 100 : 0,
+      annualRevenuePerRaised: Math.round((d.revenue30d * 12 / d.raised) * 10000) / 100,
+    }))
+    .sort((a, b) => b.tvlPerRaised - a.tvlPerRaised)
+    .slice(0, 15);
+
+  // Funding size distribution (buckets)
+  const sizeBuckets = [
+    { label: '<$1M', min: 0, max: 1e6 },
+    { label: '$1-5M', min: 1e6, max: 5e6 },
+    { label: '$5-15M', min: 5e6, max: 15e6 },
+    { label: '$15-50M', min: 15e6, max: 50e6 },
+    { label: '$50-150M', min: 50e6, max: 150e6 },
+    { label: '$150M+', min: 150e6, max: Infinity },
+  ];
+  const fundingSizeDistribution = sizeBuckets.map(bucket => {
+    const inBucket = raisesData.filter(r => r.amount >= bucket.min && r.amount < bucket.max);
+    return {
+      label: bucket.label,
+      count: inBucket.length,
+      totalAmount: inBucket.reduce((s, r) => s + (r.amount || 0), 0),
+    };
+  });
+
+  // Capital deployment curve: cumulative raised vs cumulative TVL by protocol
+  const deploymentCurve = fundedProtocols
+    .sort((a, b) => b.totalRaised - a.totalRaised)
+    .slice(0, 50)
+    .map(p => ({
+      name: p.name.length > 14 ? p.name.slice(0, 13) + '…' : p.name,
+      fullName: p.name,
+      slug: p.slug,
+      raised: p.totalRaised,
+      tvl: p.tvl,
+      mcap: p.mcap || 0,
+      revenue30d: p.revenue30d || 0,
+      tvlMultiple: p.tvl > 0 ? Math.round((p.tvl / p.totalRaised) * 100) / 100 : 0,
+      mcapMultiple: p.mcap > 0 ? Math.round((p.mcap / p.totalRaised) * 100) / 100 : 0,
+    }));
+
   const fundingAnalysis = {
-    totalRaised: raisesData.reduce((s, r) => s + (r.amount || 0), 0),
+    totalRaised: totalRaisedAll,
     raiseCount: raisesData.length,
-    raisesByYear: {},
+    fundedProtocolCount: fundedProtocols.length,
+    raisesByYear,
+    roundTypeBreakdown,
+    vintageData,
+    topInvestors,
+    categoryFundingEfficiency,
+    fundingSizeDistribution,
+    deploymentCurve,
     topFundedProtocols: protocols
       .filter(p => p.totalRaised > 0)
       .sort((a, b) => b.totalRaised - a.totalRaised)
@@ -446,16 +621,12 @@ function computeAnalytics(protocols, hackData, raisesData) {
         raisedToTvl: p.tvl > 0 ? p.totalRaised / p.tvl : null,
         raisedToMcap: p.mcap > 0 ? p.totalRaised / p.mcap : null,
       })),
+    medianRaise: (() => {
+      const amounts = raisesData.filter(r => r.amount > 0).map(r => r.amount).sort((a, b) => a - b);
+      return amounts.length > 0 ? amounts[Math.floor(amounts.length / 2)] : 0;
+    })(),
+    avgRaise: raisesData.length > 0 ? Math.round(totalRaisedAll / raisesData.length) : 0,
   };
-
-  raisesData.forEach(r => {
-    if (r.date) {
-      const year = new Date(r.date).getFullYear();
-      if (!fundingAnalysis.raisesByYear[year]) fundingAnalysis.raisesByYear[year] = { count: 0, amount: 0 };
-      fundingAnalysis.raisesByYear[year].count++;
-      fundingAnalysis.raisesByYear[year].amount += r.amount || 0;
-    }
-  });
 
   // ── 6. Chain dominance analysis ──
   const chainStats = {};
