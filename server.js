@@ -514,12 +514,76 @@ function computeAnalytics(protocols, hackData, raisesData) {
   const tvlShares = protocols.filter(p => p.tvl > 0).map(p => p.tvl / totalTvl);
   const herfindahlTvl = tvlShares.reduce((s, sh) => s + sh * sh, 0);
 
-  const top10Tvl = protocols.slice(0, 10).reduce((s, p) => s + p.tvl, 0);
-  const top10Revenue = protocols
-    .filter(p => p.revenue30d > 0)
-    .sort((a, b) => b.revenue30d - a.revenue30d)
-    .slice(0, 10)
-    .reduce((s, p) => s + p.revenue30d, 0);
+  const sortedByTvl = [...protocols].sort((a, b) => b.tvl - a.tvl);
+  const top10Tvl = sortedByTvl.slice(0, 10).reduce((s, p) => s + p.tvl, 0);
+  const sortedByRev = [...protocols].filter(p => p.revenue30d > 0).sort((a, b) => b.revenue30d - a.revenue30d);
+  const top10Revenue = sortedByRev.slice(0, 10).reduce((s, p) => s + p.revenue30d, 0);
+
+  // Lorenz curve data (cumulative share for TVL & revenue)
+  const lorenzPoints = [];
+  let cumTvl = 0, cumRev = 0;
+  // Use the larger sorted set (by TVL) for x-axis percentile
+  const tvlProtos = sortedByTvl.filter(p => p.tvl > 0);
+  // Also build cumulative revenue in TVL order
+  const revLookup = {};
+  sortedByRev.forEach(p => { revLookup[p.slug] = p.revenue30d; });
+  for (let i = 0; i < tvlProtos.length; i++) {
+    cumTvl += tvlProtos[i].tvl;
+    cumRev += revLookup[tvlProtos[i].slug] || 0;
+    // Sample every 1% or at key milestones
+    const pctile = ((i + 1) / tvlProtos.length) * 100;
+    if (i < 20 || i % Math.max(1, Math.floor(tvlProtos.length / 50)) === 0 || i === tvlProtos.length - 1) {
+      lorenzPoints.push({
+        percentile: Math.round(pctile * 10) / 10,
+        tvlShare: totalTvl > 0 ? Math.round((cumTvl / totalTvl) * 10000) / 100 : 0,
+        revenueShare: totalRevenue > 0 ? Math.round((cumRev / totalRevenue) * 10000) / 100 : 0,
+      });
+    }
+  }
+
+  // Top 15 by TVL with revenue for dominance chart
+  const topProtocols = sortedByTvl.slice(0, 15).map(p => ({
+    name: p.name, slug: p.slug, category: p.category,
+    tvl: p.tvl, revenue30d: p.revenue30d || 0, mcap: p.mcap || 0,
+    tvlShare: totalTvl > 0 ? Math.round((p.tvl / totalTvl) * 10000) / 100 : 0,
+    revenueShare: totalRevenue > 0 && p.revenue30d > 0 ? Math.round((p.revenue30d / totalRevenue) * 10000) / 100 : 0,
+  }));
+
+  // Category breakdown for market structure
+  const catSummary = {};
+  protocols.forEach(p => {
+    if (!catSummary[p.category]) catSummary[p.category] = { tvl: 0, revenue: 0, count: 0, mcap: 0 };
+    catSummary[p.category].tvl += p.tvl;
+    catSummary[p.category].revenue += p.revenue30d || 0;
+    catSummary[p.category].count += 1;
+    catSummary[p.category].mcap += p.mcap || 0;
+  });
+  const categoryShares = Object.entries(catSummary)
+    .map(([cat, d]) => ({
+      category: cat, tvl: d.tvl, revenue: d.revenue, count: d.count, mcap: d.mcap,
+      tvlShare: totalTvl > 0 ? Math.round((d.tvl / totalTvl) * 10000) / 100 : 0,
+      revenueShare: totalRevenue > 0 ? Math.round((d.revenue / totalRevenue) * 10000) / 100 : 0,
+    }))
+    .sort((a, b) => b.tvl - a.tvl)
+    .slice(0, 12);
+
+  // Revenue efficiency distribution (deciles)
+  const revPerTvl = protocols.filter(p => p.tvl > 1e5 && p.revenue30d > 0)
+    .map(p => (p.revenue30d / p.tvl) * 100);
+  revPerTvl.sort((a, b) => a - b);
+  const efficiencyDeciles = [];
+  for (let i = 0; i < 10; i++) {
+    const start = Math.floor(i * revPerTvl.length / 10);
+    const end = Math.floor((i + 1) * revPerTvl.length / 10);
+    const slice = revPerTvl.slice(start, end);
+    if (slice.length > 0) {
+      efficiencyDeciles.push({
+        decile: `D${i + 1}`,
+        avg: Math.round(slice.reduce((s, v) => s + v, 0) / slice.length * 100) / 100,
+        count: slice.length,
+      });
+    }
+  }
 
   const marketStructure = {
     totalProtocols: protocols.length,
@@ -537,6 +601,11 @@ function computeAnalytics(protocols, hackData, raisesData) {
     avgChainCount: protocols.filter(p => p.chainCount > 0).length > 0
       ? protocols.filter(p => p.chainCount > 0).reduce((s, p) => s + p.chainCount, 0) / protocols.filter(p => p.chainCount > 0).length
       : 0,
+    // Enriched data for charts
+    lorenzCurve: lorenzPoints,
+    topProtocols,
+    categoryShares,
+    efficiencyDeciles,
   };
 
   // ── 9. Emissions pressure analysis ──
