@@ -272,4 +272,71 @@ export interface ValuationRanking {
   realYieldScore: number;
   governanceFactor: number;
   divergenceSignal: number;
+  // Extended computed metrics
+  revenueVolatility: number | null;
+  chainHHI: number;
+  chainCount: number;
+  feeCaptureRatio: number | null;
+  treasuryRunwayMonths: number | null;
+  momentumRegime: string;
+  tvlChange1m: number | null;
+  priceChange30d: number | null;
+  fees30d: number | null;
+}
+
+export interface EfficiencyFrontierPoint {
+  slug: string;
+  name: string;
+  category: string;
+  logo: string;
+  risk: number;
+  yield: number;
+  score: number;
+  tvl: number;
+  mcap: number | null;
+}
+
+export interface ScatterAnalyticsPoint {
+  slug: string;
+  name: string;
+  category: string;
+  score: number;
+  tvl: number;
+  mcap: number | null;
+  revenue30d: number | null;
+  evToRevenue: number | null;
+  realYield: number | null;
+  momentum: number | null;
+  security: number;
+  feeCaptureRatio: number | null;
+  revenueVolatility: number | null;
+  chainHHI: number;
+  tvlChange1m: number | null;
+  priceChange30d: number | null;
+  momentumRegime: string;
+  divergenceSignal: number;
+  treasuryRunwayMonths: number | null;
+}
+
+export interface DimCorrelation {
+  dim1: string;
+  dim2: string;
+  correlation: number;
+}
+
+export interface CategoryRelativeValue {
+  category: string;
+  protocolCount: number;
+  avgScore: number;
+  stddev: number;
+  medianRevenue: number;
+  medianTvl: number;
+  top3: {
+    slug: string;
+    name: string;
+    score: number;
+    zScore: number;
+    tvl: number;
+    revenue30d: number | null;
+  }[];
 }

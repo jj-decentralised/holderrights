@@ -20,7 +20,25 @@ function fmt(n: number | null): string {
   return `$${n.toFixed(0)}`;
 }
 
-type SortKey = 'compositeScore' | 'evRevPctl' | 'momentumPctl' | 'realYieldPctl' | 'securityPctl' | 'divergencePctl' | 'dataCompleteness';
+type SortKey = 'compositeScore' | 'evRevPctl' | 'momentumPctl' | 'realYieldPctl' | 'securityPctl' | 'divergencePctl' | 'dataCompleteness' | 'revenueVolatility' | 'feeCaptureRatio';
+
+const REGIME_COLORS: Record<string, string> = {
+  breakout: '#2d6a2e',
+  expansion: '#4a7c4b',
+  consolidation: '#888',
+  mixed: '#aaa',
+  divergence: '#c4883c',
+  contraction: '#8b3a3a',
+};
+
+const REGIME_SHORT: Record<string, string> = {
+  breakout: 'BRK',
+  expansion: 'EXP',
+  consolidation: 'CON',
+  mixed: 'MIX',
+  divergence: 'DIV',
+  contraction: 'CTR',
+};
 
 function govTier(score: number): number {
   if (score >= 26) return 1.15;
@@ -219,6 +237,7 @@ export function DiscoveryDashboard({ analytics, protocols, onSelectProtocol }: P
                 <th className="num-cell" style={{ cursor: 'pointer' }} onClick={() => handleSort('divergencePctl')}>
                   Diverge {sortKey === 'divergencePctl' ? (sortAsc ? '\u25B2' : '\u25BC') : ''}
                 </th>
+                <th style={{ width: 42 }}>Regime</th>
               </tr>
             </thead>
             <tbody>
@@ -274,6 +293,17 @@ export function DiscoveryDashboard({ analytics, protocols, onSelectProtocol }: P
                       <div className="pctl-bar" style={{ width: `${r.divergencePctl}%` }} />
                       <span className="pctl-label">{r.divergencePctl.toFixed(0)}</span>
                     </div>
+                  </td>
+                  <td>
+                    {r.momentumRegime && (
+                      <span
+                        className="regime-badge-sm"
+                        style={{ background: REGIME_COLORS[r.momentumRegime] || '#aaa' }}
+                        title={r.momentumRegime}
+                      >
+                        {REGIME_SHORT[r.momentumRegime] || '?'}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

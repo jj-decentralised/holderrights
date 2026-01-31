@@ -32,6 +32,7 @@ import { RightsEconomicImpact } from './components/RightsEconomicImpact';
 import { TabSectionGroup } from './components/TabSectionGroup';
 import { TabSummaryBar } from './components/TabSummaryBar';
 import { DiscoveryDashboard } from './components/DiscoveryDashboard';
+import { DiscoveryDeepDive } from './components/DiscoveryDeepDive';
 import './App.css';
 
 type Tab = 'overview' | 'protocols' | 'chains' | 'risk' | 'governance';
@@ -262,6 +263,17 @@ function App() {
             {analytics && (
               <section className="section">
                 <DiscoveryDashboard analytics={analytics} protocols={protocols} onSelectProtocol={selectProtocol} />
+              </section>
+            )}
+          </TabSectionGroup>
+
+          <TabSectionGroup
+            title="Discovery Deep Dive"
+            description="Advanced cross-protocol analytics with efficiency frontiers, momentum regimes, dimension correlations, and category relative value."
+          >
+            {analytics && (
+              <section className="section">
+                <DiscoveryDeepDive analytics={analytics} onSelectProtocol={selectProtocol} />
               </section>
             )}
           </TabSectionGroup>

@@ -703,6 +703,74 @@ function computeValuationDiscovery(protocols) {
     metrics.revenue30d = p.revenue30d || null;
     metrics.holderRightsScore = 0; // placeholder — frontend enriches
 
+    // ── Extended computed metrics ──
+
+    // A. Revenue Volatility (coefficient of variation from 24h vs 7d vs 30d run rates)
+    const runRates = [];
+    if (p.revenue24h > 0) runRates.push(p.revenue24h * 30);
+    if (p.revenue7d > 0) runRates.push((p.revenue7d / 7) * 30);
+    if (p.revenue30d > 0) runRates.push(p.revenue30d);
+    if (runRates.length >= 2) {
+      const rrMean = runRates.reduce((s, v) => s + v, 0) / runRates.length;
+      const rrVar = runRates.reduce((s, v) => s + (v - rrMean) ** 2, 0) / runRates.length;
+      metrics.revenueVolatility = rrMean > 0 ? Math.sqrt(rrVar) / rrMean : 0;
+    } else {
+      metrics.revenueVolatility = null;
+    }
+
+    // B. Chain Diversification (HHI — lower = more diversified)
+    if (p.chains && p.chains.length > 1 && p.tvl > 0) {
+      // Approximate: equal weight per chain (true per-chain TVL would require extra API call)
+      const n = p.chainCount || p.chains.length;
+      metrics.chainHHI = 1 / n; // best-case HHI assuming equal distribution
+      metrics.chainCount = n;
+    } else {
+      metrics.chainHHI = 1.0; // single chain = max concentration
+      metrics.chainCount = p.chainCount || 1;
+    }
+
+    // C. Fee Capture Efficiency (revenue / fees — how much of fees protocol captures)
+    if (p.revenue30d > 0 && p.fees30d > 0) {
+      metrics.feeCaptureRatio = p.revenue30d / p.fees30d;
+    } else {
+      metrics.feeCaptureRatio = null;
+    }
+
+    // D. Treasury Runway (months of operation treasury can sustain)
+    const liquidTreasuryExt = (p.treasuryStablecoins || 0) + (p.treasuryMajors || 0);
+    if (liquidTreasuryExt > 0 && p.revenue30d !== null) {
+      // Assume monthly burn ~ 30% above revenue (standard for growth protocols)
+      const monthlyBurn = Math.max(1, (p.revenue30d || 0) * 0.3);
+      metrics.treasuryRunwayMonths = liquidTreasuryExt / monthlyBurn;
+    } else {
+      metrics.treasuryRunwayMonths = null;
+    }
+
+    // E. Momentum Regime Classification
+    const tvl1m = p.tvlChange1m ?? 0;
+    const price30d = p.priceChange30d ?? 0;
+    const rev24h = p.revenue24h ?? 0;
+    const rev30dDaily = p.revenue30d ? p.revenue30d / 30 : 0;
+    const revAccel = rev30dDaily > 0 ? (rev24h - rev30dDaily) / rev30dDaily : 0;
+    if (tvl1m > 5 && revAccel > 0.1) {
+      metrics.momentumRegime = 'breakout';
+    } else if (tvl1m > 5 && price30d > 5) {
+      metrics.momentumRegime = 'expansion';
+    } else if (tvl1m < -5 && price30d < -5) {
+      metrics.momentumRegime = 'contraction';
+    } else if (tvl1m > 5 && price30d < -5) {
+      metrics.momentumRegime = 'divergence';
+    } else if (Math.abs(tvl1m) < 5 && Math.abs(price30d) < 5) {
+      metrics.momentumRegime = 'consolidation';
+    } else {
+      metrics.momentumRegime = 'mixed';
+    }
+
+    // F. TVL and price changes for scatter data
+    metrics.tvlChange1m = p.tvlChange1m ?? null;
+    metrics.priceChange30d = p.priceChange30d ?? null;
+    metrics.fees30d = p.fees30d || null;
+
     scored.push(metrics);
   }
 
@@ -842,6 +910,135 @@ function computeValuationDiscovery(protocols) {
   const mean = allScores.length > 0 ? allScores.reduce((s, v) => s + v, 0) / allScores.length : 0;
   const variance = allScores.length > 0 ? allScores.reduce((s, v) => s + (v - mean) ** 2, 0) / allScores.length : 0;
 
+  // ── Cross-protocol analytics ──
+
+  // 1. Efficiency Frontier: protocols with best revenue-per-unit-risk
+  const efficiencyFrontier = scored
+    .filter(m => m.realYieldScore > 0 && m.securityScore > 0)
+    .map(m => ({
+      slug: m.slug, name: m.name, category: m.category, logo: m.logo,
+      risk: Math.round((1 - m.securityScore + m.dilutionRisk) * 50 * 10) / 10, // 0-100 risk
+      yield: Math.round(m.realYieldScore * 10000) / 100, // yield %
+      score: m.compositeScore,
+      tvl: m.tvl,
+      mcap: m.mcap,
+    }))
+    .sort((a, b) => (b.yield / Math.max(a.risk, 1)) - (a.yield / Math.max(b.risk, 1)))
+    .slice(0, 60);
+
+  // 2. Momentum Regime Distribution
+  const regimeCounts = {};
+  const regimeProtocols = {};
+  for (const m of scored) {
+    const r = m.momentumRegime || 'mixed';
+    regimeCounts[r] = (regimeCounts[r] || 0) + 1;
+    if (!regimeProtocols[r]) regimeProtocols[r] = [];
+    if (regimeProtocols[r].length < 5) {
+      regimeProtocols[r].push({ slug: m.slug, name: m.name, score: m.compositeScore, tvl: m.tvl });
+    }
+  }
+  const momentumRegimes = Object.entries(regimeCounts).map(([regime, count]) => ({
+    regime, count, protocols: regimeProtocols[regime] || [],
+  })).sort((a, b) => b.count - a.count);
+
+  // 3. Category Relative Value (within-category z-scores for key metrics)
+  const categoryRelativeValue = [];
+  for (const cat in byCat) {
+    const group = byCat[cat];
+    if (group.length < 3) continue;
+    const catScores = group.map(m => m.compositeScore);
+    const catMean = catScores.reduce((s, v) => s + v, 0) / catScores.length;
+    const catVar = catScores.reduce((s, v) => s + (v - catMean) ** 2, 0) / catScores.length;
+    const catStd = Math.sqrt(catVar) || 1;
+    const catRevenues = group.map(m => m.revenue30d).filter(v => v > 0);
+    const catTvls = group.map(m => m.tvl).filter(v => v > 0);
+    const medRev = catRevenues.length > 0 ? median(catRevenues) : 0;
+    const medTvl = catTvls.length > 0 ? median(catTvls) : 0;
+    // Top 3 most undervalued within category
+    const topInCat = [...group].sort((a, b) => b.compositeScore - a.compositeScore).slice(0, 3);
+    categoryRelativeValue.push({
+      category: cat,
+      protocolCount: group.length,
+      avgScore: Math.round(catMean * 10) / 10,
+      stddev: Math.round(catStd * 10) / 10,
+      medianRevenue: medRev,
+      medianTvl: medTvl,
+      top3: topInCat.map(m => ({
+        slug: m.slug, name: m.name, score: m.compositeScore,
+        zScore: Math.round(((m.compositeScore - catMean) / catStd) * 100) / 100,
+        tvl: m.tvl, revenue30d: m.revenue30d,
+      })),
+    });
+  }
+  categoryRelativeValue.sort((a, b) => b.avgScore - a.avgScore);
+
+  // 4. Multi-factor scatter data (pre-computed for frontend)
+  const scatterAnalytics = scored
+    .filter(m => m.tvl > 0)
+    .slice(0, 80)
+    .map(m => ({
+      slug: m.slug, name: m.name, category: m.category,
+      score: m.compositeScore,
+      tvl: m.tvl,
+      mcap: m.mcap,
+      revenue30d: m.revenue30d,
+      evToRevenue: m.evToRevenue,
+      realYield: Math.round(m.realYieldScore * 10000) / 100,
+      momentum: m.revenueMomentum !== null ? Math.round(m.revenueMomentum * 100) : null,
+      security: Math.round(m.securityScore * 100),
+      feeCaptureRatio: m.feeCaptureRatio !== null ? Math.round(m.feeCaptureRatio * 1000) / 10 : null,
+      revenueVolatility: m.revenueVolatility !== null ? Math.round(m.revenueVolatility * 100) : null,
+      chainHHI: Math.round(m.chainHHI * 100),
+      tvlChange1m: m.tvlChange1m,
+      priceChange30d: m.priceChange30d,
+      momentumRegime: m.momentumRegime,
+      divergenceSignal: Math.round(m.divergenceSignal * 100),
+      treasuryRunwayMonths: m.treasuryRunwayMonths !== null ? Math.round(m.treasuryRunwayMonths) : null,
+    }));
+
+  // 5. Dimension correlation matrix (which dimensions co-occur in top protocols)
+  const top30 = rankings.slice(0, 30);
+  const dimKeys = ['evRevPctl', 'momentumPctl', 'realYieldPctl', 'securityPctl', 'divergencePctl', 'fundingPctl'];
+  const dimCorrelations = [];
+  for (let i = 0; i < dimKeys.length; i++) {
+    for (let j = i + 1; j < dimKeys.length; j++) {
+      const xVals = top30.map(m => m[dimKeys[i]]);
+      const yVals = top30.map(m => m[dimKeys[j]]);
+      const xMean = xVals.reduce((s, v) => s + v, 0) / xVals.length;
+      const yMean = yVals.reduce((s, v) => s + v, 0) / yVals.length;
+      let cov = 0, xVar = 0, yVar = 0;
+      for (let k = 0; k < top30.length; k++) {
+        const dx = xVals[k] - xMean;
+        const dy = yVals[k] - yMean;
+        cov += dx * dy;
+        xVar += dx * dx;
+        yVar += dy * dy;
+      }
+      const denom = Math.sqrt(xVar * yVar);
+      dimCorrelations.push({
+        dim1: dimKeys[i], dim2: dimKeys[j],
+        correlation: denom > 0 ? Math.round((cov / denom) * 100) / 100 : 0,
+      });
+    }
+  }
+
+  // 6. Score snapshot tracking (append to in-memory history)
+  const now = Date.now();
+  if (!global._scoreSnapshots) global._scoreSnapshots = [];
+  // Keep max 72 snapshots (72 * 4hr = 12 days of hourly-ish data)
+  if (global._scoreSnapshots.length > 72) global._scoreSnapshots = global._scoreSnapshots.slice(-72);
+  global._scoreSnapshots.push({
+    timestamp: now,
+    mean: Math.round(mean * 10) / 10,
+    median: allScores.length > 0 ? Math.round(median(allScores) * 10) / 10 : 50,
+    p25: allScores.length > 0 ? Math.round(allScores[Math.floor(allScores.length * 0.25)] * 10) / 10 : 50,
+    p75: allScores.length > 0 ? Math.round(allScores[Math.floor(allScores.length * 0.75)] * 10) / 10 : 50,
+    totalScored: scored.length,
+    regimeBreakout: regimeCounts['breakout'] || 0,
+    regimeDivergence: regimeCounts['divergence'] || 0,
+    regimeContraction: regimeCounts['contraction'] || 0,
+  });
+
   return {
     rankings,
     categoryBenchmarks,
@@ -853,6 +1050,13 @@ function computeValuationDiscovery(protocols) {
       p75: allScores.length > 0 ? allScores[Math.floor(allScores.length * 0.75)] : 50,
     },
     totalScored: scored.length,
+    // Extended analytics
+    efficiencyFrontier,
+    momentumRegimes,
+    categoryRelativeValue,
+    scatterAnalytics,
+    dimCorrelations,
+    scoreHistory: global._scoreSnapshots || [],
   };
 }
 
