@@ -4,8 +4,9 @@ import {
   ResponsiveContainer, ComposedChart, Bar, BarChart, Cell,
 } from 'recharts';
 import { HOLDER_RIGHT_DEFINITIONS } from '../types';
-import type { EnrichedProtocol, CategoryPeer } from '../types';
+import type { EnrichedProtocol, CategoryPeer, ValuationRanking } from '../types';
 import { HistoricChart, RevenueChart } from './HistoricChart';
+import { ValuationRadar } from './ValuationRadar';
 
 type DetailTab = 'overview' | 'history' | 'peers';
 
@@ -18,6 +19,8 @@ interface ProtocolDetailProps {
   holdersRevenueHistory: { date: number; value: number }[];
   dexVolumeHistory: { date: number; value: number }[];
   categoryPeers: CategoryPeer[];
+  valuationData: ValuationRanking | null;
+  categoryBenchmark: Record<string, number> | null;
   onClose: () => void;
 }
 
@@ -75,6 +78,8 @@ export function ProtocolDetail({
   holdersRevenueHistory,
   dexVolumeHistory,
   categoryPeers,
+  valuationData,
+  categoryBenchmark,
   onClose,
 }: ProtocolDetailProps) {
   const [detailTab, setDetailTab] = useState<DetailTab>('overview');
@@ -237,6 +242,9 @@ export function ProtocolDetail({
                 </div>
               )}
             </div>
+
+            {/* Valuation Radar */}
+            <ValuationRadar valuationData={valuationData} categoryBenchmark={categoryBenchmark} />
 
             {/* Price & TVL Momentum */}
             {(hasPriceChanges || p.tvlChange1d !== null) && (

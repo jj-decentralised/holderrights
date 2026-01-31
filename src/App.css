@@ -1978,3 +1978,293 @@
     font-size: 13px;
   }
 }
+
+/* ── Discovery Dashboard ── */
+
+.discovery-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.discovery-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  padding: 16px 20px;
+  border-radius: 4px;
+}
+
+.discovery-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.discovery-card-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--black);
+  letter-spacing: -0.02em;
+}
+
+.discovery-card-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.discovery-ranked-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.discovery-ranked-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.discovery-ranked-table th:hover {
+  color: var(--black);
+}
+
+.discovery-ranked-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-light, #f0f0ec);
+  vertical-align: middle;
+}
+
+.discovery-ranked-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.discovery-ranked-table tbody tr:hover {
+  background: var(--bg-hover, #f8f8f5);
+}
+
+.pctl-bar-container {
+  background: #f0f0ec;
+  border-radius: 2px;
+  height: 6px;
+  width: 60px;
+  display: inline-block;
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.pctl-bar-container.pctl-bar-sm {
+  width: 48px;
+  height: 4px;
+}
+
+.pctl-bar {
+  height: 100%;
+  background: var(--black);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.pctl-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.discovery-score-cell {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.discovery-sort-arrow {
+  font-size: 10px;
+  margin-left: 3px;
+  opacity: 0.6;
+}
+
+/* ── Valuation Radar ── */
+
+.valuation-radar-section {
+  margin-top: 24px;
+  padding: 20px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.radar-layout {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.radar-score-block {
+  flex: 0 0 140px;
+  text-align: center;
+}
+
+.radar-score-number {
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.radar-score-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.radar-completeness {
+  margin-top: 12px;
+}
+
+.radar-completeness-bar {
+  height: 4px;
+  background: #f0f0ec;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.radar-completeness-fill {
+  height: 100%;
+  background: var(--black);
+  border-radius: 2px;
+}
+
+.radar-completeness-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 4px;
+}
+
+.radar-chart-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.radar-values-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.radar-value-item {
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.radar-value-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.radar-value-main {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.radar-value-pctl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+/* ── Discovery scatter/histogram ── */
+
+.discovery-histogram {
+  margin-bottom: 32px;
+}
+
+.discovery-scatter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-top: 32px;
+}
+
+.discovery-scatter-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.discovery-scatter-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.category-leaderboard {
+  margin-top: 32px;
+}
+
+.category-leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.category-leaderboard-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.category-leaderboard-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-light, #f0f0ec);
+}
+
+.category-leaderboard-table .cat-group-row td {
+  background: var(--bg-hover, #f8f8f5);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 768px) {
+  .discovery-summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .radar-layout {
+    flex-direction: column;
+  }
+  .radar-score-block {
+    flex: none;
+  }
+  .radar-values-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .discovery-scatter-grid {
+    grid-template-columns: 1fr;
+  }
+}

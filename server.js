@@ -553,6 +553,9 @@ function computeAnalytics(protocols, hackData, raisesData) {
       })),
   };
 
+  // ── 10. Valuation Discovery Engine ──
+  const valuationDiscovery = computeValuationDiscovery(protocols);
+
   return {
     categoryAnalysis,
     revenueEfficiency,
@@ -563,6 +566,293 @@ function computeAnalytics(protocols, hackData, raisesData) {
     yieldAnalysis,
     marketStructure,
     emissionsAnalysis,
+    valuationDiscovery,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// VALUATION DISCOVERY ENGINE
+// 9-dimension composite scoring for undervalued protocol discovery
+// ══════════════════════════════════════════════════════════════
+
+function percentileRank(value, sortedArr) {
+  if (sortedArr.length === 0) return 50;
+  let count = 0;
+  for (const v of sortedArr) {
+    if (v < value) count++;
+    else if (v === value) count += 0.5;
+  }
+  return (count / sortedArr.length) * 100;
+}
+
+const DEX_CATEGORIES = new Set(['Dexes', 'DEX', 'DEXes', 'Dex Aggregator', 'Derivatives', 'Options']);
+
+function computeValuationDiscovery(protocols) {
+  // ── Step 1: Compute raw metrics per protocol ──
+  const scored = [];
+
+  for (const p of protocols) {
+    const metrics = { slug: p.slug, name: p.name, category: p.category, logo: p.logo || '' };
+    let applicableCount = 0;
+    let availableCount = 0;
+
+    // 1. EV/Revenue
+    metrics.evToRevenue = null;
+    if (p.mcap > 0 && p.revenue30d > 0) {
+      const liquidTreasury = (p.treasuryStablecoins || 0) + (p.treasuryMajors || 0);
+      const ev = Math.max(p.mcap * 0.01, p.mcap - liquidTreasury);
+      metrics.evToRevenue = ev / (p.revenue30d * 12);
+      availableCount++;
+    }
+    applicableCount++;
+
+    // 2. Funding Discount
+    metrics.fundingRatio = null;
+    metrics._fundingStale = false;
+    if (p.mcap > 0 && p.latestValuation > 0) {
+      metrics.fundingRatio = p.mcap / p.latestValuation;
+      // Check staleness (>2 years)
+      if (p.latestRoundDate) {
+        const roundAge = (Date.now() - new Date(p.latestRoundDate).getTime()) / (365.25 * 86400000);
+        if (roundAge > 2) metrics._fundingStale = true;
+      }
+      availableCount++;
+    }
+    applicableCount++;
+
+    // 3. Revenue Momentum
+    metrics.revenueMomentum = null;
+    if (p.revenue30d > 0) {
+      let recentRunRate = null;
+      if (p.revenue24h > 0) recentRunRate = p.revenue24h * 30;
+      else if (p.revenue7d > 0) recentRunRate = (p.revenue7d / 7) * 30;
+      if (recentRunRate !== null) {
+        metrics.revenueMomentum = Math.max(-0.9, Math.min(5.0, (recentRunRate - p.revenue30d) / p.revenue30d));
+        availableCount++;
+      }
+    }
+    applicableCount++;
+
+    // 4. Volume Utilization (DEX-specific)
+    metrics.volumeUtilization = null;
+    const isDex = DEX_CATEGORIES.has(p.category);
+    if (isDex) {
+      applicableCount++;
+      if (p.dexVolume30d > 0 && p.tvl > 0) {
+        metrics.volumeUtilization = p.dexVolume30d / p.tvl;
+        availableCount++;
+      }
+    }
+
+    // 5. Security Score
+    if (p.hackCount === 0) {
+      metrics.securityScore = 1.0;
+    } else {
+      const hackLossRatio = p.tvl > 0 ? p.totalHackedAmount / p.tvl : 1;
+      metrics.securityScore = Math.max(0, Math.min(1, 1.0 - hackLossRatio - (p.hackCount * 0.05)));
+    }
+    applicableCount++;
+    availableCount++;
+
+    // 6. Dilution Risk
+    if (!p.hasEmissions || p.upcomingUnlockCount === 0) {
+      metrics.dilutionRisk = 0;
+    } else {
+      let proximityFactor = 0.5; // default if date unknown
+      if (p.nextUnlockDate) {
+        const daysTo = (new Date(p.nextUnlockDate).getTime() - Date.now()) / 86400000;
+        if (daysTo <= 30) proximityFactor = 1.0;
+        else if (daysTo <= 90) proximityFactor = 0.6;
+        else if (daysTo <= 180) proximityFactor = 0.3;
+        else proximityFactor = 0.1;
+      }
+      metrics.dilutionRisk = Math.min(1.0, (p.upcomingUnlockCount / 10) * proximityFactor);
+    }
+    applicableCount++;
+    availableCount++;
+
+    // 7. Real Yield
+    const emissionsDiscount = p.hasEmissions ? 0.5 : 1.0;
+    const adjustedPoolYield = (p.avgPoolApy || 0) * emissionsDiscount / 100;
+    const revenueYield = (p.mcap > 0 && p.revenue30d > 0) ? (p.revenue30d * 12) / p.mcap : 0;
+    metrics.realYieldScore = (revenueYield * 0.6) + (adjustedPoolYield * 0.4);
+    applicableCount++;
+    availableCount++;
+
+    // 8. Governance Factor (computed from holderRightsScore if available via classification lookup)
+    // Note: holderRightsScore is applied client-side; server stores 0 for unclassified.
+    // We include a placeholder; frontend enriches with actual score.
+    metrics.governanceFactor = 1.0; // neutral default — frontend will override
+
+    // 9. TVL-Price Divergence
+    metrics.divergenceSignal = 0;
+    if (p.tvlChange1m !== null && p.tvlChange1m !== undefined &&
+        p.priceChange30d !== null && p.priceChange30d !== undefined) {
+      if (p.tvlChange1m > 0 && p.priceChange30d < 0) {
+        metrics.divergenceSignal = Math.min(1.0, (p.tvlChange1m - p.priceChange30d) / 100);
+      } else if (p.tvlChange1m > 0 && p.priceChange30d >= 0 && p.tvlChange1m > p.priceChange30d) {
+        metrics.divergenceSignal = Math.min(0.5, (p.tvlChange1m - p.priceChange30d) / 100);
+      }
+      availableCount++;
+    }
+    applicableCount++;
+
+    metrics.dataCompleteness = applicableCount > 0 ? availableCount / applicableCount : 0;
+    metrics.tvl = p.tvl;
+    metrics.mcap = p.mcap || null;
+    metrics.revenue30d = p.revenue30d || null;
+    metrics.holderRightsScore = 0; // placeholder — frontend enriches
+
+    scored.push(metrics);
+  }
+
+  // ── Step 2: Compute percentile ranks ──
+  // Category-adjusted for EV/Revenue, Volume Utilization, Real Yield
+  const CATEGORY_ADJUSTED = new Set(['evToRevenue', 'volumeUtilization', 'realYieldScore']);
+
+  // Group by category
+  const byCat = {};
+  scored.forEach(m => {
+    if (!byCat[m.category]) byCat[m.category] = [];
+    byCat[m.category].push(m);
+  });
+
+  // For each metric, build sorted arrays (global + per-category)
+  const metricKeys = [
+    { key: 'evToRevenue', higher: false },
+    { key: 'fundingRatio', higher: false },
+    { key: 'revenueMomentum', higher: true },
+    { key: 'volumeUtilization', higher: true },
+    { key: 'securityScore', higher: true },
+    { key: 'dilutionRisk', higher: false },
+    { key: 'realYieldScore', higher: true },
+    { key: 'divergenceSignal', higher: true },
+  ];
+
+  const weights = {
+    evToRevenue: 0.22,
+    fundingRatio: 0.08,
+    revenueMomentum: 0.18,
+    volumeUtilization: 0.07,
+    securityScore: 0.10,
+    dilutionRisk: 0.05,
+    realYieldScore: 0.15,
+    divergenceSignal: 0.10,
+    governanceFactor: 0.05,
+  };
+
+  // Build sorted value arrays per metric (global)
+  const globalSorted = {};
+  for (const { key } of metricKeys) {
+    globalSorted[key] = scored.map(m => m[key]).filter(v => v !== null && v !== undefined).sort((a, b) => a - b);
+  }
+
+  // Build sorted value arrays per category
+  const catSorted = {};
+  for (const cat in byCat) {
+    catSorted[cat] = {};
+    for (const { key } of metricKeys) {
+      catSorted[cat][key] = byCat[cat].map(m => m[key]).filter(v => v !== null && v !== undefined).sort((a, b) => a - b);
+    }
+  }
+
+  // Compute percentiles and composite score
+  for (const m of scored) {
+    let compositeScore = 0;
+    let totalWeight = 0;
+
+    for (const { key, higher } of metricKeys) {
+      const pctlKey = key.replace(/([A-Z])/g, '_$1').toLowerCase() + '_pctl';
+      const shortKey = {
+        evToRevenue: 'evRevPctl',
+        fundingRatio: 'fundingPctl',
+        revenueMomentum: 'momentumPctl',
+        volumeUtilization: 'volumeUtilPctl',
+        securityScore: 'securityPctl',
+        dilutionRisk: 'dilutionPctl',
+        realYieldScore: 'realYieldPctl',
+        divergenceSignal: 'divergencePctl',
+      }[key];
+
+      const val = m[key];
+      let pctl;
+
+      if (val === null || val === undefined) {
+        pctl = 50; // neutral
+      } else {
+        const gArr = globalSorted[key];
+        const globalPctl = percentileRank(val, gArr);
+
+        if (CATEGORY_ADJUSTED.has(key) && catSorted[m.category]?.[key]?.length >= 5) {
+          const catPctl = percentileRank(val, catSorted[m.category][key]);
+          pctl = catPctl * 0.7 + globalPctl * 0.3;
+        } else {
+          pctl = globalPctl;
+        }
+
+        if (!higher) pctl = 100 - pctl; // invert for "lower is better"
+      }
+
+      m[shortKey] = Math.round(pctl * 10) / 10;
+
+      // Funding: reduce weight if stale
+      let w = weights[key] || 0;
+      if (key === 'fundingRatio' && m._fundingStale) w *= 0.5;
+
+      compositeScore += pctl * w;
+      totalWeight += w;
+    }
+
+    // Governance factor (5% weight, applied as-is — frontend enriches)
+    m.governancePctl = 50; // neutral default; frontend adjusts
+    compositeScore += 50 * weights.governanceFactor;
+    totalWeight += weights.governanceFactor;
+
+    m.compositeScore = totalWeight > 0 ? Math.round((compositeScore / totalWeight) * 10) / 10 : 50;
+
+    // Clean up internal fields
+    delete m._fundingStale;
+  }
+
+  // Sort by composite score descending, take top 100
+  scored.sort((a, b) => b.compositeScore - a.compositeScore);
+  const rankings = scored.slice(0, 100);
+
+  // Category benchmarks (median of each percentile)
+  const categoryBenchmarks = {};
+  for (const cat in byCat) {
+    const catProtos = byCat[cat];
+    const bench = {};
+    for (const { key } of metricKeys) {
+      const shortKey = {
+        evToRevenue: 'evRevPctl', fundingRatio: 'fundingPctl',
+        revenueMomentum: 'momentumPctl', volumeUtilization: 'volumeUtilPctl',
+        securityScore: 'securityPctl', dilutionRisk: 'dilutionPctl',
+        realYieldScore: 'realYieldPctl', divergenceSignal: 'divergencePctl',
+      }[key];
+      const vals = catProtos.map(m => m[shortKey]).filter(v => v !== undefined);
+      bench[shortKey] = vals.length > 0 ? median(vals) : 50;
+    }
+    bench.governancePctl = 50;
+    categoryBenchmarks[cat] = bench;
+  }
+
+  // Score distribution stats
+  const allScores = scored.map(m => m.compositeScore).sort((a, b) => a - b);
+  const mean = allScores.length > 0 ? allScores.reduce((s, v) => s + v, 0) / allScores.length : 0;
+  const variance = allScores.length > 0 ? allScores.reduce((s, v) => s + (v - mean) ** 2, 0) / allScores.length : 0;
+
+  return {
+    rankings,
+    categoryBenchmarks,
+    scoreDistribution: {
+      mean: Math.round(mean * 10) / 10,
+      median: allScores.length > 0 ? Math.round(median(allScores) * 10) / 10 : 50,
+      stddev: Math.round(Math.sqrt(variance) * 10) / 10,
+      p25: allScores.length > 0 ? allScores[Math.floor(allScores.length * 0.25)] : 50,
+      p75: allScores.length > 0 ? allScores[Math.floor(allScores.length * 0.75)] : 50,
+    },
+    totalScored: scored.length,
   };
 }
 
@@ -607,6 +897,13 @@ async function enrichWithPriceData() {
 
   const elapsed = ((Date.now() - start) / 1000).toFixed(1);
   console.log(`[enrich] Price enrichment done: ${enriched}/${geckoIds.length} tokens in ${elapsed}s`);
+
+  // Recompute valuation discovery scores now that price data is available
+  if (cache.data?.analytics) {
+    console.log('[enrich] Recomputing valuation discovery with price data...');
+    cache.data.analytics.valuationDiscovery = computeValuationDiscovery(protocols);
+    console.log('[enrich] Valuation discovery recomputed.');
+  }
 }
 
 // ── Cache management ──

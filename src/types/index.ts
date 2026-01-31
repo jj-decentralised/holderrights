@@ -240,3 +240,36 @@ export interface CategoryPeer {
   mcap: number | null;
   fees30d: number | null;
 }
+
+export interface ValuationRanking {
+  slug: string;
+  name: string;
+  category: string;
+  logo: string;
+  compositeScore: number;
+  dataCompleteness: number;
+  tvl: number;
+  mcap: number | null;
+  revenue30d: number | null;
+  holderRightsScore: number;
+  // Percentiles (0-100)
+  evRevPctl: number;
+  fundingPctl: number;
+  momentumPctl: number;
+  volumeUtilPctl: number;
+  securityPctl: number;
+  dilutionPctl: number;
+  realYieldPctl: number;
+  governancePctl: number;
+  divergencePctl: number;
+  // Raw values
+  evToRevenue: number | null;
+  fundingRatio: number | null;
+  revenueMomentum: number | null;
+  volumeUtilization: number | null;
+  securityScore: number;
+  dilutionRisk: number;
+  realYieldScore: number;
+  governanceFactor: number;
+  divergenceSignal: number;
+}

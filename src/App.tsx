@@ -31,6 +31,7 @@ import { GovernancePremium } from './components/GovernancePremium';
 import { RightsEconomicImpact } from './components/RightsEconomicImpact';
 import { TabSectionGroup } from './components/TabSectionGroup';
 import { TabSummaryBar } from './components/TabSummaryBar';
+import { DiscoveryDashboard } from './components/DiscoveryDashboard';
 import './App.css';
 
 type Tab = 'overview' | 'protocols' | 'chains' | 'risk' | 'governance';
@@ -144,6 +145,18 @@ function App() {
     ];
   }, [protocols]);
 
+  const selectedValuation = useMemo(() => {
+    if (!selectedProtocol || !analytics?.valuationDiscovery?.rankings) return null;
+    return analytics.valuationDiscovery.rankings.find(
+      (r: { slug: string }) => r.slug === selectedProtocol.slug
+    ) ?? null;
+  }, [selectedProtocol, analytics]);
+
+  const selectedCategoryBenchmark = useMemo(() => {
+    if (!selectedProtocol || !analytics?.valuationDiscovery?.categoryBenchmarks) return null;
+    return analytics.valuationDiscovery.categoryBenchmarks[selectedProtocol.category] ?? null;
+  }, [selectedProtocol, analytics]);
+
   if (loading) {
     return (
       <div className="loading-screen">
@@ -240,6 +253,18 @@ function App() {
       {activeTab === 'protocols' && (
         <>
           <TabSummaryBar metrics={protocolMetrics} />
+
+          <TabSectionGroup
+            title="Undervaluation Discovery"
+            description="9-dimension composite scoring engine identifying potentially undervalued protocols across EV/Revenue, momentum, real yield, security, and more."
+            first
+          >
+            {analytics && (
+              <section className="section">
+                <DiscoveryDashboard analytics={analytics} protocols={protocols} onSelectProtocol={selectProtocol} />
+              </section>
+            )}
+          </TabSectionGroup>
 
           <TabSectionGroup
             title="Revenue & Capital Efficiency"
@@ -498,6 +523,8 @@ function App() {
           holdersRevenueHistory={holdersRevenueHistory}
           dexVolumeHistory={dexVolumeHistory}
           categoryPeers={categoryPeers}
+          valuationData={selectedValuation}
+          categoryBenchmark={selectedCategoryBenchmark}
           onClose={() => selectProtocol(null)}
         />
       )}
